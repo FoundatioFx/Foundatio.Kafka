@@ -1,0 +1,45 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Publish",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/samples/Foundatio.Kafka.Publish/bin/Debug/net6.0/Foundatio.Kafka.Publish.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/samples/Foundatio.Kafka.Publish",
+      "requireExactSource": false,
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": "Subscribe",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/samples/Foundatio.Kafka.Subscribe/bin/Debug/net6.0/Foundatio.Kafka.Subscribe.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/samples/Foundatio.Kafka.Subscribe",
+      "requireExactSource": false,
+      "console": "integratedTerminal",
+      "stopAtEntry": false,
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": ".NET Core Attach",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Pub/Sub Sample",
+      "preLaunchTask": "build",
+      "configurations": [
+        "Subscribe",
+        "Publish"
+      ]
+    }
+  ]
+}
