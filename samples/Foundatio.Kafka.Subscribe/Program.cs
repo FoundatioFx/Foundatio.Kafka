@@ -10,8 +10,10 @@ namespace Foundatio.Kafka.Subscribe {
 
             var tasks = new List<Task>();
             var messageBuses = new List<IMessageBus>();
-            for (int i = 0; i < 3; i++) {
-                var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions { ConnectionString = "amqp://localhost:5672" });
+            for (int i = 0; i < 30; i++) {
+                var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
+                    BootStrapServers = "localhost:9092"
+                });
                 messageBuses.Add(messageBus);
                 tasks.Add(messageBus.SubscribeAsync<MyMessage>(msg => { Console.WriteLine($"Got subscriber {messageBus.MessageBusId} message: {msg.Hey}"); }));
             }
@@ -19,6 +21,6 @@ namespace Foundatio.Kafka.Subscribe {
             Console.ReadLine();
             foreach (var messageBus in messageBuses)
                 messageBus.Dispose();
-       }
+        }
     }
 }

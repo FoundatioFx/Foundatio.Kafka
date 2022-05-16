@@ -7,7 +7,10 @@ namespace Foundatio.Kafka.Publish {
         public static async Task Main(string[] args) {
             Console.WriteLine("Enter the message and press enter to send:");
 
-            using (var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions { ConnectionString = "amqp://localhost:5672" })) {
+            using (var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
+                BootStrapServers = "localhost:9092"
+
+            })) {
                 string message;
                 do {
                     message = Console.ReadLine();

@@ -11,13 +11,13 @@ namespace Foundatio.Kafka.Tests.Messaging;
 
 public class KafkaMessageBusTests : MessageBusTestBase {
     public KafkaMessageBusTests(ITestOutputHelper output) : base(output) { }
-    
+
     protected override IMessageBus GetMessageBus(Func<SharedMessageBusOptions, SharedMessageBusOptions> config = null) {
         return new KafkaMessageBus(o => {
             o.LoggerFactory(Log);
-
-            config?.Invoke(o.Target);
-
+            o.BootStrapServers("localhost:9092");
+            o.AutoCommitIntervalMs(100);
+            
             return o;
         });
     }
