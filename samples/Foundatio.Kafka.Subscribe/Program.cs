@@ -13,8 +13,8 @@ namespace Foundatio.Kafka.Subscribe {
             for (int i = 0; i < 3; i++) {
                 var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
                     BootStrapServers = "localhost:29092",
-                    Topic = "topic8",
-                    GroupId = "testGroup"
+                    Topic = "localTopic",
+                    GroupId = Guid.NewGuid().ToString()
                 });
                 messageBuses.Add(messageBus);
                 tasks.Add(messageBus.SubscribeAsync<MyMessage>(msg => { Console.WriteLine($"Got subscriber {messageBus.MessageBusId} message: {msg.Hey}"); }));

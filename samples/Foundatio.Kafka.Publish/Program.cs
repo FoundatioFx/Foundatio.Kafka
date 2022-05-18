@@ -10,8 +10,8 @@ namespace Foundatio.Kafka.Publish {
             using (var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
                 BootStrapServers = "localhost:29092"
                 ,
-                Topic = "topic8",
-                GroupId = "testGroup"
+                Topic = "localTopic",
+                GroupId =Guid.NewGuid().ToString()
             })) {
                 string message;
                 do {

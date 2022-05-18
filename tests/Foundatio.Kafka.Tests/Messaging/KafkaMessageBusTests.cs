@@ -22,20 +22,13 @@ public class KafkaMessageBusTests : MessageBusTestBase {
             o.BootStrapServers("localhost:9092");
             o.AutoCommitIntervalMs(100);
             o.Topic(_topic);
-            //o.GroupId("GroupId");
             o.GroupId(Guid.NewGuid().ToString());
             return o;
         });
     }
 
-    //protected override Task CleanupMessageBusAsync(IMessageBus messageBus) {
-      
-    //    return base.CleanupMessageBusAsync(messageBus);
-    //}
-
     [Fact]
-    public override Task CanSendMessageAsync() {
-        Log.MinimumLevel = LogLevel.Trace;
+    public override Task CanSendMessageAsync() {        
         return base.CanSendMessageAsync();
     }
 
@@ -51,7 +44,6 @@ public class KafkaMessageBusTests : MessageBusTestBase {
 
     [Fact]
     public override Task CanSendDelayedMessageAsync() {
-        Log.MinimumLevel = LogLevel.Trace;
         return base.CanSendDelayedMessageAsync();
     }
 
@@ -62,7 +54,6 @@ public class KafkaMessageBusTests : MessageBusTestBase {
 
     [Fact]
     public override Task CanReceiveMessagesConcurrentlyAsync() {
-        Log.MinimumLevel = LogLevel.Trace;
         return base.CanReceiveMessagesConcurrentlyAsync();
     }
 

@@ -20,8 +20,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     /// The group identifier.
     /// </value>
     public string GroupId { get; set; }
-    public string ConsumerGroupId { get; set; }
-
+    
     /// <summary>
     /// { "auto.commit.interval.ms", 5000 },
     /// </summary>
@@ -40,12 +39,39 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
 
     public IDictionary<string, object> Arguments { get; set; }
 
+    /// <summary>
+    ///  Path to client's public key (PEM) used for authentication. default: '' importance:low
+    /// </summary>
     public SecurityProtocol SslCertificateLocation { get; set; }
+    /// <summary>
+    ///SASL mechanism to use for authentication. Supported: GSSAPI, PLAIN, SCRAM-SHA-256,
+    ///SCRAM-SHA-512. **NOTE**: Despite the name, you may not configure more than one
+    ///mechanism.
+    /// </summary>
     public SaslMechanism? SaslMechanism { get; set; }
-
+    /// <summary>
+    /// SASL username for use with the PLAIN and SASL-SCRAM-.. mechanisms default: importance: high
+    /// </summary>
     public string SaslUsername { get; set; }
+    /// <summary>
+    /// SASL password for use with the PLAIN and SASL-SCRAM-
+    /// </summary>
     public string SaslPassword { get; set; }
+    /// <summary>
+    /// File or directory path to CA certificate(s) for verifying the broker's key. Defaults:
+    ///     On Windows the system's CA certificates are automatically looked up in the Windows
+    ///     Root certificate store. On Mac OSX this configuration defaults to `probe`. It
+    ///     is recommended to install openssl using Homebrew, to provide CA certificates.
+    ///     On Linux install the distribution's ca-certificates package. If OpenSSL is statically
+    ///     linked or `ssl.ca.location` is set to `probe` a list of standard paths will be
+    ///     probed and the first one found will be used as the default CA certificate location
+    ///     path. If OpenSSL is dynamically linked the OpenSSL library's default path will
+    ///     be used (see `OPENSSLDIR` in `openssl version -a`). default: '' importance: low
+    /// </summary>
     public string SslCaLocation { get; set; }
+    /// <summary>
+    /// Protocol used to communicate with brokers. default: plaintext importance: high
+    /// </summary>
     public SecurityProtocol SecurityProtocol { get; set; }
 }
 
@@ -57,11 +83,6 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
 
     public KafkaMessageBusOptionsBuilder GroupId(string groupId) {
         Target.GroupId = groupId ?? throw new ArgumentNullException(nameof(groupId));
-        return this;
-    }
-
-    public KafkaMessageBusOptionsBuilder ConsumerGroupId(string consumerGroupId) {
-        Target.ConsumerGroupId = consumerGroupId ?? throw new ArgumentNullException(nameof(consumerGroupId));
         return this;
     }
 
