@@ -8,8 +8,10 @@ namespace Foundatio.Kafka.Publish {
             Console.WriteLine("Enter the message and press enter to send:");
 
             using (var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
-                BootStrapServers = "localhost:9092"
-
+                BootStrapServers = "localhost:29092"
+                ,
+                Topic = "topic8",
+                GroupId = "testGroup"
             })) {
                 string message;
                 do {

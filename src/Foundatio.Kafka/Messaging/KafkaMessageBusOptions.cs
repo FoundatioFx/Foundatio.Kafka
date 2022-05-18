@@ -20,6 +20,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     /// The group identifier.
     /// </value>
     public string GroupId { get; set; }
+    public string ConsumerGroupId { get; set; }
 
     /// <summary>
     /// { "auto.commit.interval.ms", 5000 },
@@ -56,6 +57,11 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
 
     public KafkaMessageBusOptionsBuilder GroupId(string groupId) {
         Target.GroupId = groupId ?? throw new ArgumentNullException(nameof(groupId));
+        return this;
+    }
+
+    public KafkaMessageBusOptionsBuilder ConsumerGroupId(string consumerGroupId) {
+        Target.ConsumerGroupId = consumerGroupId ?? throw new ArgumentNullException(nameof(consumerGroupId));
         return this;
     }
 
