@@ -23,6 +23,8 @@ public class KafkaMessageBusTests : MessageBusTestBase {
             o.AutoCommitIntervalMs(100);
             o.Topic(_topic);
             o.GroupId(Guid.NewGuid().ToString());
+            o.NumberOfPartitions(1);
+            o.ReplicationFactor(1);
             return o;
         });
     }

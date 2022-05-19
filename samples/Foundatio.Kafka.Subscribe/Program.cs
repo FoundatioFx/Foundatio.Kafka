@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Confluent.Kafka;
 using Foundatio.Messaging;
 
 namespace Foundatio.Kafka.Subscribe {
@@ -14,9 +15,12 @@ namespace Foundatio.Kafka.Subscribe {
                 var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
                     BootStrapServers = "localhost:29092",
                     Topic = "localTopic",
-                    GroupId = Guid.NewGuid().ToString()
-                });
-                messageBuses.Add(messageBus);
+                    GroupId = Guid.NewGuid().ToString(),
+                    AutoOffSetReset= AutoOffsetReset.Earliest,
+                    EnableAutoCommit=true,
+                    EnableAutoOffsetStore=true
+                });;
+                messageBuses.Add(messageBus);                
                 tasks.Add(messageBus.SubscribeAsync<MyMessage>(msg => { Console.WriteLine($"Got subscriber {messageBus.MessageBusId} message: {msg.Hey}"); }));
             }
             await Task.WhenAll(tasks);
