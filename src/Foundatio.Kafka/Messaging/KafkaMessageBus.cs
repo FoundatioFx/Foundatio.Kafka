@@ -73,7 +73,9 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
 
     protected override async Task EnsureTopicSubscriptionAsync(CancellationToken cancellationToken) {
         // Check if we create topic here / check redis / rabbit implementation, we cache the result under isSubscribed and use an async lock.
-        await EnsureTopicAsync();
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("EnsureTopicSubscriptionAsync");
+        await EnsureTopicCreatedAsync();
         EnsureListening();
     }
 
@@ -87,8 +89,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     
     private void EnsureListening() {
         if (_listeningTask is not null) {
-            //debug
-            _logger.LogInformation("StartListening: Already listening");
+            _logger.LogDebug("StartListening: Already listening");
             return;
         }
 
@@ -96,14 +97,15 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
             using (var consumer = new ConsumerBuilder<string, KafkaMessageEnvelope>(_consumerConfig).SetValueDeserializer(new KafkaSerializer(_serializer)).Build()) {
                 consumer.Subscribe(_options.Topic);
                 
-                _logger.LogInformation($"Subscribed consumer : {consumer.Name} , topic : {_options.Topic}");
+                _logger.LogInformation("EnsureListening consumer {Name} subscribed on {Topic}", consumer.Name, _options.Topic);
 
                 try {
-                    ///log level ,log  ($"Subscribed consumer : {consumer.Name} , topic : {_options.Topic}");
+                    if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
+
                     while (!_messageBusDisposedCancellationTokenSource.IsCancellationRequested) {
                         var consumeResult = consumer.Consume(_messageBusDisposedCancellationTokenSource.Token);
-                        ///trace
-                        _logger.LogInformation($"Consumed topic: {consumeResult.Topic} by consumer : {consumer.Name} partition {consumeResult.TopicPartition}");
+
+                        if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace($"Consumed topic: {consumeResult.Topic} by consumer : {consumer.Name} partition {consumeResult.TopicPartition}");
                         await OnMessageAsync(consumeResult).AnyContext();
                     }
                 } catch (OperationCanceledException) {
@@ -123,11 +125,11 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         }
         _isDisposed = true;
 
-        _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
+        if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
 
         var queueSize = _producer?.Flush(TimeSpan.FromSeconds(15));
         if (queueSize > 0) {
-            _logger.LogTrace("Flushing producer {queueSize}", queueSize);
+            if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Flushing producer {queueSize}", queueSize);
         }
         _producer?.Dispose();
 
@@ -136,21 +138,22 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         base.Dispose();
     }
 
-    private async Task EnsureTopicAsync() {
+    private async Task EnsureTopicCreatedAsync() {
+        if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("EnsureTopicCreatedAsync {Topic}", _options.Topic);
         var adminConfig = CreateAdminConfig();
         using var adminClient = new AdminClientBuilder(adminConfig).Build() ;
         try {
             var metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(2));
             bool isTopicExist = metadata.Topics.Any(t => t.Topic == _options.Topic);
-            ///Get partition ReplicationFactor NumPartitions maybe others from _options
             if (!isTopicExist)
                 await adminClient.CreateTopicsAsync(new TopicSpecification[] { new TopicSpecification { Name = _options.Topic, ReplicationFactor = _options.TopicReplicationFactor, NumPartitions = _options.TopicNumberOfPartitions, Configs = _options.TopicConfigs, ReplicasAssignments = _options.TopicReplicasAssignments } });
             ///Logging and rethrow
         } catch (CreateTopicsException e) {
             if (e.Results[0].Error.Code != ErrorCode.TopicAlreadyExists) {
-                Console.WriteLine($"An error occured creating topic {_options.Topic}: {e.Results[0].Error.Reason}");
+                if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("An error occured creating topic {Topic}: {Reason}", _options.Topic, e.Results[0].Error.Reason);
+
             } else {
-                Console.WriteLine("Topic already exists");
+                if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Topic {Topic} already exists", _options.Topic);
             }
         } 
     }
