@@ -6,17 +6,17 @@ using Foundatio.Messaging;
 
 namespace Foundatio.Kafka.Subscribe {
     public class Program {
-        public static async Task Main(string[] args) {
+        public static async Task Main() {
             Console.WriteLine("Waiting to receive messages, press enter to quit...");
 
             var tasks = new List<Task>();
             var messageBuses = new List<IMessageBus>();
             for (int i = 0; i < 3; i++) {
                 var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
-                    BootStrapServers = "localhost:29092",
-                    Topic = "localTopic",
+                    BootstrapServers = "localhost:29092",
+                    TopicName = "localTopic1",
                     GroupId = Guid.NewGuid().ToString(),
-                    AutoOffSetReset= AutoOffsetReset.Earliest,
+                    AutoOffSetReset = AutoOffsetReset.Earliest,
                     EnableAutoCommit=true,
                     EnableAutoOffsetStore=true
                 });;

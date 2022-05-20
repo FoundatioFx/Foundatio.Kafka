@@ -14,7 +14,7 @@ namespace Foundatio.Messaging;
 
 public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     private bool _isDisposed;
-    private CancellationTokenSource _messageBusDisposedCancellationTokenSource = new CancellationTokenSource();
+    private readonly CancellationTokenSource _messageBusDisposedCancellationTokenSource = new();
     private Task _listeningTask;
     private readonly AdminClientConfig _adminClientConfig;
     private readonly ProducerConfig _producerConfig;
@@ -31,7 +31,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     public KafkaMessageBus(Builder<KafkaMessageBusOptionsBuilder, KafkaMessageBusOptions> config)
         : this(config(new KafkaMessageBusOptionsBuilder()).Build()) {
     }
-
+ 
     protected override Task PublishImplAsync(string messageType, object message, MessageOptions options, CancellationToken cancellationToken) {
         ///Todo: review logging
         if (_logger.IsEnabled(LogLevel.Trace))
@@ -42,7 +42,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
             Data = SerializeMessageBody(messageType, message)
         };
 
-        _producer.Produce(_options.Topic, new Message<string, KafkaMessageEnvelope> { Key = messageType, Value = kafkaMessage },
+        _producer.Produce(_options.TopicName, new Message<string, KafkaMessageEnvelope> { Key = messageType, Value = kafkaMessage },
         (deliveryReport) => {
             ///rethrow error and logging ? rabbitmq
             if (deliveryReport.Error.Code != ErrorCode.NoError) {
@@ -60,7 +60,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("OnMessage( topic: {Topic},groupId: {GroupId} partition: [{Partition}] offset: [{Offset}] partitionOffset; [{TopicPartitionOffset}])", consumeResult.Topic,_consumerConfig.GroupId, consumeResult.Partition, consumeResult.Offset, consumeResult.TopicPartitionOffset);
 
-        IMessage message = null;
+        IMessage message;
         try {
             message = ConvertToMessage(consumeResult.Message.Value);
         } catch (Exception ex) {
@@ -94,26 +94,25 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         }
 
         _listeningTask = Task.Run(async () => {
-            using (var consumer = new ConsumerBuilder<string, KafkaMessageEnvelope>(_consumerConfig).SetValueDeserializer(new KafkaSerializer(_serializer)).Build()) {
-                consumer.Subscribe(_options.Topic);
-                
-                _logger.LogInformation("EnsureListening consumer {Name} subscribed on {Topic}", consumer.Name, _options.Topic);
+            using var consumer = new ConsumerBuilder<string, KafkaMessageEnvelope>(_consumerConfig).SetValueDeserializer(new KafkaSerializer(_serializer)).Build();
+            consumer.Subscribe(_options.TopicName);
 
-                try {
-                    if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
+            _logger.LogInformation("EnsureListening consumer {Name} subscribed on {Topic}", consumer.Name, _options.Topic);
 
-                    while (!_messageBusDisposedCancellationTokenSource.IsCancellationRequested) {
-                        var consumeResult = consumer.Consume(_messageBusDisposedCancellationTokenSource.Token);
+            try {
+                if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
 
-                        if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace($"Consumed topic: {consumeResult.Topic} by consumer : {consumer.Name} partition {consumeResult.TopicPartition}");
-                        await OnMessageAsync(consumeResult).AnyContext();
-                    }
-                } catch (OperationCanceledException) {
-                } catch (Exception ex) {
-                    _logger.LogDebug(ex, "Error consuming message: {Message}", ex.Message);
-                } finally {
-                    consumer.Close();
+                while (!_messageBusDisposedCancellationTokenSource.IsCancellationRequested) {
+                    var consumeResult = consumer.Consume(_messageBusDisposedCancellationTokenSource.Token);
+
+                    if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace($"Consumed topic: {consumeResult.Topic} by consumer : {consumer.Name} partition {consumeResult.TopicPartition}");
+                    await OnMessageAsync(consumeResult).AnyContext();
                 }
+            } catch (OperationCanceledException) {
+            } catch (Exception ex) {
+                _logger.LogDebug(ex, "Error consuming message: {Message}", ex.Message);
+            } finally {
+                consumer.Close();
             }
         }, _messageBusDisposedCancellationTokenSource.Token);
     }
@@ -127,7 +126,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
 
         if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
 
-        var queueSize = _producer?.Flush(TimeSpan.FromSeconds(15));
+        int? queueSize = _producer?.Flush(TimeSpan.FromSeconds(15));
         if (queueSize > 0) {
             if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Flushing producer {queueSize}", queueSize);
         }
@@ -140,13 +139,12 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
 
     private async Task EnsureTopicCreatedAsync() {
         if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("EnsureTopicCreatedAsync {Topic}", _options.Topic);
-        var adminConfig = CreateAdminConfig();
-        using var adminClient = new AdminClientBuilder(adminConfig).Build() ;
+        using var adminClient = new AdminClientBuilder(_adminClientConfig).Build() ;
         try {
             var metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(2));
-            bool isTopicExist = metadata.Topics.Any(t => t.Topic == _options.Topic);
+            bool isTopicExist = metadata.Topics.Any(t => t.Topic == _options.TopicName);
             if (!isTopicExist)
-                await adminClient.CreateTopicsAsync(new TopicSpecification[] { new TopicSpecification { Name = _options.Topic, ReplicationFactor = _options.TopicReplicationFactor, NumPartitions = _options.TopicNumberOfPartitions, Configs = _options.TopicConfigs, ReplicasAssignments = _options.TopicReplicasAssignments } });
+                await adminClient.CreateTopicsAsync(new TopicSpecification[] { new TopicSpecification { Name = _options.TopicName, ReplicationFactor = _options.TopicReplicationFactor, NumPartitions = _options.TopicNumberOfPartitions, Configs = _options.TopicConfigs, ReplicasAssignments = _options.TopicReplicasAssignments } });
             ///Logging and rethrow
         } catch (CreateTopicsException e) {
             if (e.Results[0].Error.Code != ErrorCode.TopicAlreadyExists) {
@@ -164,12 +162,72 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     /// <returns></returns>
     private ClientConfig CreateClientConfig() {
         return new ClientConfig {
-            BootstrapServers = _options.BootStrapServers,
-            SecurityProtocol = _options.SslCertificateLocation,
             SaslMechanism = _options.SaslMechanism,
+            Acks = _options.Acks,
+            ClientId = _options.ClientId,
+            BootstrapServers = _options.BootstrapServers,
+            MessageMaxBytes = _options.MessageMaxBytes,
+            MessageCopyMaxBytes = _options.MessageCopyMaxBytes,
+            ReceiveMessageMaxBytes = _options.ReceiveMessageMaxBytes,
+            MaxInFlight = _options.MaxInFlight,
+            TopicMetadataRefreshIntervalMs = _options.TopicMetadataRefreshIntervalMs,
+            MetadataMaxAgeMs = _options.MetadataMaxAgeMs,
+            TopicMetadataRefreshFastIntervalMs = _options.TopicMetadataRefreshFastIntervalMs,
+            TopicMetadataRefreshSparse = _options.TopicMetadataRefreshSparse,
+            TopicMetadataPropagationMaxMs = _options.TopicMetadataPropagationMaxMs,
+            TopicBlacklist = _options.TopicBlacklist,
+            Debug = _options.Debug,
+            SocketTimeoutMs = _options.SocketTimeoutMs,
+            SocketSendBufferBytes = _options.SocketSendBufferBytes,
+            SocketReceiveBufferBytes = _options.SocketReceiveBufferBytes,
+            SocketKeepaliveEnable = _options.SocketKeepaliveEnable,
+            SocketNagleDisable = _options.SocketNagleDisable,
+            SocketMaxFails = _options.SocketMaxFails,
+            BrokerAddressTtl = _options.BrokerAddressTtl,
+            BrokerAddressFamily = _options.BrokerAddressFamily,
+            ConnectionsMaxIdleMs = _options.ConnectionsMaxIdleMs,
+            ReconnectBackoffMs = _options.ReconnectBackoffMs,
+            ReconnectBackoffMaxMs = _options.ReconnectBackoffMaxMs,
+            StatisticsIntervalMs = _options.StatisticsIntervalMs,
+            LogQueue = _options.LogQueue,
+            LogThreadName = _options.LogThreadName,
+            EnableRandomSeed = _options.EnableRandomSeed,
+            LogConnectionClose = _options.LogConnectionClose,
+            InternalTerminationSignal = _options.InternalTerminationSignal,
+            ApiVersionRequest = _options.ApiVersionRequest,
+            ApiVersionRequestTimeoutMs = _options.ApiVersionRequestTimeoutMs,
+            ApiVersionFallbackMs = _options.ApiVersionFallbackMs,
+            BrokerVersionFallback = _options.BrokerVersionFallback,
+            SecurityProtocol = _options.SecurityProtocol,
+            SslCipherSuites = _options.SslCipherSuites,
+            SslCurvesList = _options.SslCurvesList,
+            SslSigalgsList = _options.SslSigalgsList,
+            SslKeyLocation = _options.SslKeyLocation,
+            SslKeyPassword = _options.SslKeyPassword,
+            SslKeyPem = _options.SslKeyPem,
+            SslCertificateLocation = _options.SslCertificateLocation,
+            SslCertificatePem = _options.SslCertificatePem,
+            SslCaLocation = _options.SslCaLocation,
+            SslCaPem = _options.SslCaPem,
+            SslCaCertificateStores = _options.SslCaCertificateStores,
+            SslCrlLocation = _options.SslCrlLocation,
+            SslKeystoreLocation = _options.SslKeystoreLocation,
+            SslKeystorePassword = _options.SslKeystorePassword,
+            SslEngineLocation = _options.SslEngineLocation,
+            SslEngineId = _options.SslEngineId,
+            EnableSslCertificateVerification = _options.EnableSslCertificateVerification,
+            SslEndpointIdentificationAlgorithm = _options.SslEndpointIdentificationAlgorithm,
+            SaslKerberosServiceName = _options.SaslKerberosServiceName,
+            SaslKerberosPrincipal = _options.SaslKerberosPrincipal,
+            SaslKerberosKinitCmd = _options.SaslKerberosKinitCmd,
+            SaslKerberosKeytab = _options.SaslKerberosKeytab,
+            SaslKerberosMinTimeBeforeRelogin = _options.SaslKerberosMinTimeBeforeRelogin,
             SaslUsername = _options.SaslUsername,
             SaslPassword = _options.SaslPassword,
-            SslCaLocation = _options.SslCaLocation,
+            SaslOauthbearerConfig = _options.SaslOauthbearerConfig,
+            EnableSaslOauthbearerUnsecureJwt = _options.EnableSaslOauthbearerUnsecureJwt,
+            PluginLibraryPaths = _options.PluginLibraryPaths,
+            ClientRack = _options.ClientRack,
         };
     }
 
@@ -178,23 +236,66 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         var config = new AdminClientConfig(_clientConfig);
         return config;
     }
+
     /// <summary>
     /// check default values
     /// </summary>
     /// <returns></returns>
     private ProducerConfig CreateProducerConfig() {
         var _clientConfig = CreateClientConfig();
-        var config = new ProducerConfig(_clientConfig) { EnableDeliveryReports = true };
+        var config = new ProducerConfig(_clientConfig) {
+            EnableBackgroundPoll = _options.EnableBackgroundPoll,
+            EnableDeliveryReports = _options.EnableDeliveryReports,
+            RequestTimeoutMs = _options.RequestTimeoutMs,
+            MessageTimeoutMs = _options.MessageTimeoutMs,
+            Partitioner = _options.Partitioner,
+            CompressionLevel = _options.CompressionLevel,
+            TransactionalId = _options.TransactionalId,
+            TransactionTimeoutMs = _options.TransactionTimeoutMs,
+            EnableIdempotence = _options.EnableIdempotence,
+            EnableGaplessGuarantee = _options.EnableGaplessGuarantee,
+            QueueBufferingMaxMessages = _options.QueueBufferingMaxMessages,
+            QueueBufferingMaxKbytes = _options.QueueBufferingMaxKbytes,
+            LingerMs = _options.LingerMs,
+            MessageSendMaxRetries = _options.MessageSendMaxRetries,
+            RetryBackoffMs = _options.RetryBackoffMs,
+            QueueBufferingBackpressureThreshold = _options.QueueBufferingBackpressureThreshold,
+            CompressionType = _options.CompressionType,
+            BatchNumMessages = _options.BatchNumMessages,
+            BatchSize = _options.BatchSize,
+            StickyPartitioningLingerMs = _options.StickyPartitioningLingerMs
+        };
         return config;
     }
+
     //set from options
     private ConsumerConfig CreateConsumerConfig() {
         var _clientConfig = CreateClientConfig();
         var config = new ConsumerConfig(_clientConfig) {
-            GroupId = _options.GroupId,
-            AutoOffsetReset = AutoOffsetReset.Earliest,
-            EnableAutoCommit = _options.EnableAutoCommit,
-            EnableAutoOffsetStore = _options.EnableAutoOffsetStore,
+             ConsumeResultFields = _options.ConsumeResultFields,
+             AutoOffsetReset = _options.AutoOffsetReset,
+             GroupId = _options.GroupId,
+             GroupInstanceId = _options.GroupInstanceId,
+             PartitionAssignmentStrategy = _options.PartitionAssignmentStrategy,
+             SessionTimeoutMs = _options.SessionTimeoutMs,
+             HeartbeatIntervalMs = _options.HeartbeatIntervalMs,
+             GroupProtocolType = _options.GroupProtocolType,
+             CoordinatorQueryIntervalMs = _options.CoordinatorQueryIntervalMs,
+             MaxPollIntervalMs = _options.MaxPollIntervalMs,
+             EnableAutoCommit = _options.EnableAutoCommit,
+             AutoCommitIntervalMs = _options.AutoCommitIntervalMs,
+             EnableAutoOffsetStore = _options.EnableAutoOffsetStore,
+             QueuedMinMessages = _options.QueuedMinMessages,
+             QueuedMaxMessagesKbytes = _options.QueuedMaxMessagesKbytes,
+             FetchWaitMaxMs = _options.FetchWaitMaxMs,
+             MaxPartitionFetchBytes = _options.MaxPartitionFetchBytes,
+             FetchMaxBytes = _options.FetchMaxBytes,
+             FetchMinBytes = _options.FetchMinBytes,
+             FetchErrorBackoffMs = _options.FetchErrorBackoffMs,
+             IsolationLevel = _options.IsolationLevel,
+             EnablePartitionEof = _options.EnablePartitionEof,
+             CheckCrcs = _options.CheckCrcs,
+             AllowAutoCreateTopics = _options.AllowAutoCreateTopics
         };
         return config;
     }
@@ -216,9 +317,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         }
 
         public KafkaMessageEnvelope Deserialize(ReadOnlySpan<byte> data, bool isNull, SerializationContext context) {
-            using (var stream = new MemoryStream(data.ToArray())) {
-                return _serializer.Deserialize<KafkaMessageEnvelope>(stream);
-            }
+            using var stream = new MemoryStream(data.ToArray());
+            return _serializer.Deserialize<KafkaMessageEnvelope>(stream);
         }
     }
 }

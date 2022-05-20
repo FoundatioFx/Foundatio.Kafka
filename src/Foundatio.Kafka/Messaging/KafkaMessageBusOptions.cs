@@ -11,7 +11,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     /// <value>
     /// The boot strap servers.
     /// </value>
-    public string BootStrapServers { get; set; }
+    public string BootstrapServers { get; set; }
 
     /// <summary>
     /// group.id
@@ -42,7 +42,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     /// <summary>
     ///  Path to client's public key (PEM) used for authentication. default: '' importance:low
     /// <summary>
-    public SecurityProtocol SslCertificateLocation { get; set; }
+    public string SslCertificateLocation { get; set; }
 
     /// <summary>
     ///SASL mechanism to use for authentication. Supported: GSSAPI, PLAIN, SCRAM-SHA-256,
@@ -77,7 +77,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     /// <summary>
     /// Protocol used to communicate with brokers. default: plaintext importance: high
     /// <summary>
-    public SecurityProtocol SecurityProtocol { get; set; }
+    public SecurityProtocol? SecurityProtocol { get; set; }
 
     /// <summary>
     /// The number of partitions for the new topic or -1 (the default) if a replica assignment
@@ -87,6 +87,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
         get;
         set;
     } = -1;
+
     /// <summary>
     ///  The replication factor for the new topic or -1 (the default) if a replica assignment
     ///     is specified instead.
@@ -570,6 +571,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     ///     low
     ///     <summary>
     public string SaslKerberosKinitCmd { get; set; }
+
     ///
     /// <summary>
     ///     Path to Kerberos keytab file. This configuration property is only used as a variable
@@ -642,14 +644,15 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     ///     <summary>
     public bool? EnableDeliveryReports { get; set; }
 
-    ///
-    /// <summary>
-    ///     A comma separated list of fields that may be optionally set in delivery reports.
-    ///     Disabling delivery report fields that you do not require will improve maximum
-    ///     throughput and reduce memory usage. Allowed values: key, value, timestamp, headers,
-    ///     status, all, none. default: all importance: low
-    ///     <summary>
-    public string DeliveryReportFields { get; set; }
+    // Producer config throws exception with this property
+    /////
+    ///// <summary>
+    /////     A comma separated list of fields that may be optionally set in delivery reports.
+    /////     Disabling delivery report fields that you do not require will improve maximum
+    /////     throughput and reduce memory usage. Allowed values: key, value, timestamp, headers,
+    /////     status, all, none. default: all importance: low
+    /////     <summary>
+    //public string DeliveryReportFields { get; set; }
 
     ///
     /// <summary>
@@ -1037,7 +1040,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
 }
 public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<KafkaMessageBusOptions, KafkaMessageBusOptionsBuilder> {
     public KafkaMessageBusOptionsBuilder BootStrapServers(string bootstrapServers) {
-        Target.BootStrapServers = bootstrapServers ?? throw new ArgumentNullException(nameof(bootstrapServers));
+        Target.BootstrapServers = bootstrapServers ?? throw new ArgumentNullException(nameof(bootstrapServers));
         return this;
     }
 
@@ -1061,13 +1064,8 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
         return this;
     }
 
-    public KafkaMessageBusOptionsBuilder BootStrapServers2(string bootstrapServers) {
-        Target.BootStrapServers = bootstrapServers ?? throw new ArgumentNullException(nameof(bootstrapServers));
-        return this;
-    }
-
-    public KafkaMessageBusOptionsBuilder SslCertificateLocation(SecurityProtocol? securityProtocol) {
-        Target.SslCertificateLocation = securityProtocol ?? throw new ArgumentNullException(nameof(securityProtocol));
+    public KafkaMessageBusOptionsBuilder SslCertificateLocation(string sslCertificateLocation) {
+        Target.SslCertificateLocation = sslCertificateLocation ?? throw new ArgumentNullException(nameof(sslCertificateLocation));
         return this;
     }
 
@@ -1168,6 +1166,11 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
 
     public KafkaMessageBusOptionsBuilder TopicBlacklist(string topicBlacklist) {
         Target.TopicBlacklist = topicBlacklist ?? throw new ArgumentNullException(nameof(topicBlacklist));
+        return this;
+    }
+
+    public KafkaMessageBusOptionsBuilder TopicName(string topicName) {
+        Target.TopicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
         return this;
     }
 
@@ -1386,14 +1389,16 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
         Target.EnableBackgroundPoll = enableBackgroundPoll ?? throw new ArgumentNullException(nameof(enableBackgroundPoll));
         return this;
     }
+
     public KafkaMessageBusOptionsBuilder EnableDeliveryReports(bool? enableDeliveryReports) {
         Target.EnableDeliveryReports = enableDeliveryReports ?? throw new ArgumentNullException(nameof(enableDeliveryReports));
         return this;
     }
-    public KafkaMessageBusOptionsBuilder DeliveryReportFields(string deliveryReportFields) {
-        Target.DeliveryReportFields = deliveryReportFields ?? throw new ArgumentNullException(nameof(deliveryReportFields));
-        return this;
-    }
+    // Producer config throws exception with this property
+    //public KafkaMessageBusOptionsBuilder DeliveryReportFields(string deliveryReportFields) {
+    //    Target.DeliveryReportFields = deliveryReportFields ?? throw new ArgumentNullException(nameof(deliveryReportFields));
+    //    return this;
+    //}
     public KafkaMessageBusOptionsBuilder RequestTimeoutMs(int? requestTimeoutMs) {
         Target.RequestTimeoutMs = requestTimeoutMs ?? throw new ArgumentNullException(nameof(requestTimeoutMs));
         return this;

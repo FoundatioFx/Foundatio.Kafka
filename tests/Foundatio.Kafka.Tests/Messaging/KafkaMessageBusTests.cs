@@ -21,7 +21,7 @@ public class KafkaMessageBusTests : MessageBusTestBase {
             o.LoggerFactory(Log);
             o.BootStrapServers("localhost:9092");
             o.AutoCommitIntervalMs(100);
-            o.Topic(_topic);
+            o.TopicName(_topic);
             o.GroupId(Guid.NewGuid().ToString());
             o.NumberOfPartitions(1);
             o.ReplicationFactor(1);
