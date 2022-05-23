@@ -87,7 +87,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
             Data = envelope.Data
         };
     }
-    
+
     private void EnsureListening() {
         if (_listeningTask is not null) {
             _logger.LogDebug("StartListening: Already listening");
@@ -100,7 +100,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
             _logger.LogInformation("EnsureListening consumer {Name} subscribed on {Topic}", consumer.Name, _options.Topic);
 
             try {
-                if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
+                if (_logger.IsEnabled(LogLevel.Trace))
+                    _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
 
                 while (!_messageBusDisposedCancellationTokenSource.IsCancellationRequested) {
                     var consumeResult = consumer.Consume(_messageBusDisposedCancellationTokenSource.Token);
@@ -125,11 +126,13 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         }
         _isDisposed = true;
 
-        if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
 
         int? queueSize = _producer?.Flush(TimeSpan.FromSeconds(15));
         if (queueSize > 0) {
-            if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Flushing producer {queueSize}", queueSize);
+            if (_logger.IsEnabled(LogLevel.Trace))
+                _logger.LogTrace("Flushing producer {queueSize}", queueSize);
         }
         _producer?.Dispose();
 
@@ -150,10 +153,12 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                 ///Logging and rethrow
             } catch (CreateTopicsException e) {
                 if (e.Results[0].Error.Code != ErrorCode.TopicAlreadyExists) {
-                    if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("An error occured creating topic {Topic}: {Reason}", _options.Topic, e.Results[0].Error.Reason);
+                    if (_logger.IsEnabled(LogLevel.Trace)) 
+                        _logger.LogTrace("An error occured creating topic {Topic}: {Reason}", _options.Topic, e.Results[0].Error.Reason);
 
                 } else {
-                    if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Topic {Topic} already exists", _options.Topic);
+                    if (_logger.IsEnabled(LogLevel.Trace))
+                        _logger.LogTrace("Topic {Topic} already exists", _options.Topic);
                 }
             }
         }
@@ -267,7 +272,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         return config;
     }
 
-    //set from options
     private ConsumerConfig CreateConsumerConfig() {
         var _clientConfig = CreateClientConfig();
         var config = new ConsumerConfig(_clientConfig) {
