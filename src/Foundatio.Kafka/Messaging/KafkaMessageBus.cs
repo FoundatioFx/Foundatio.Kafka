@@ -20,14 +20,14 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     private readonly AdminClientConfig _adminClientConfig;
     private readonly ProducerConfig _producerConfig;
     private readonly ConsumerConfig _consumerConfig;
-    private readonly IProducer<string, KafkaMessageEnvelope> _producer;
+    private readonly IProducer<string, byte[]> _producer;
     private readonly AsyncLock _lock = new();
 
     public KafkaMessageBus(KafkaMessageBusOptions options) : base(options) {
         _adminClientConfig = CreateAdminConfig();
         _consumerConfig = CreateConsumerConfig();
         _producerConfig = CreateProducerConfig();
-        _producer = new ProducerBuilder<string, KafkaMessageEnvelope>(_producerConfig).SetValueSerializer(new KafkaSerializer(_serializer)).Build();
+        _producer = new ProducerBuilder<string, byte[]>(_producerConfig).Build();
     }
 
     public KafkaMessageBus(Builder<KafkaMessageBusOptionsBuilder, KafkaMessageBusOptions> config)
@@ -38,12 +38,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("PublishImplAsync([{messageType}])", messageType);
         ///Get rid of envelope (short type and header)
-        var kafkaMessage = new KafkaMessageEnvelope {
-            Type = messageType,
-            Data = SerializeMessageBody(messageType, message)
-        };
 
-        _producer.Produce(_options.TopicName, new Message<string, KafkaMessageEnvelope> { Key = messageType, Value = kafkaMessage },
+        _producer.Produce(_options.TopicName, new Message<string, byte[]> { Key = messageType, Value = SerializeMessageBody(messageType, message) },
         (deliveryReport) => {
             ///rethrow error and logging ? rabbitmq
             if (deliveryReport.Error.Code != ErrorCode.NoError) {
@@ -55,7 +51,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         return Task.CompletedTask;
     }
 
-    private async Task OnMessageAsync<TKey, TValue>(ConsumeResult<TKey, TValue> consumeResult) where TValue : KafkaMessageEnvelope {
+    private async Task OnMessageAsync(ConsumeResult<string, byte[]> consumeResult) {
         if (_subscribers.IsEmpty)
             return;
         if (_logger.IsEnabled(LogLevel.Trace))
@@ -63,7 +59,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
 
         IMessage message;
         try {
-            message = ConvertToMessage(consumeResult.Message.Value);
+            message = ConvertToMessage(consumeResult.Message.Key, consumeResult.Message.Value);
         } catch (Exception ex) {
             _logger.LogWarning(ex, "OnMessage({Offset}] {Partition}) Error deserializing message: {Message}", consumeResult.Offset, consumeResult.TopicPartition.Partition, ex.Message);
             return;
@@ -80,11 +76,11 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         EnsureListening();
     }
 
-    protected virtual IMessage ConvertToMessage(KafkaMessageEnvelope envelope) {
-        return new Message(() => DeserializeMessageBody(envelope.Type, envelope.Data)) {
-            Type = envelope.Type,
-            ClrType = GetMappedMessageType(envelope.Type),
-            Data = envelope.Data
+    protected virtual IMessage ConvertToMessage(string messageType,byte[] data) {
+        return new Message(() => DeserializeMessageBody(messageType, data)) {
+            Type = messageType,
+            ClrType = GetMappedMessageType(messageType),
+            Data = data
         };
     }
 
@@ -95,7 +91,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         }
 
         _listeningTask = Task.Run(async () => {
-            using var consumer = new ConsumerBuilder<string, KafkaMessageEnvelope>(_consumerConfig).SetValueDeserializer(new KafkaSerializer(_serializer)).Build();
+            using var consumer = new ConsumerBuilder<string, byte[]>(_consumerConfig).Build();
             consumer.Subscribe(_options.TopicName);
             _logger.LogInformation("EnsureListening consumer {Name} subscribed on {Topic}", consumer.Name, _options.Topic);
 
@@ -303,25 +299,25 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         return config;
     }
 
-    public class KafkaMessageEnvelope {
-        public string Type { get; set; }
-        public byte[] Data { get; set; }
-    }
+    //public class KafkaMessageEnvelope {
+    //    public string Type { get; set; }
+    //    public byte[] Data { get; set; }
+    //}
 
-    public class KafkaSerializer : Confluent.Kafka.ISerializer<KafkaMessageEnvelope>, IDeserializer<KafkaMessageEnvelope> {
-        private readonly ISerializer _serializer;
+    //public class KafkaSerializer : Confluent.Kafka.ISerializer<KafkaMessageEnvelope>, IDeserializer<KafkaMessageEnvelope> {
+    //    private readonly ISerializer _serializer;
 
-        public KafkaSerializer(ISerializer serializer) {
-            _serializer = serializer;
-        }
+    //    public KafkaSerializer(ISerializer serializer) {
+    //        _serializer = serializer;
+    //    }
 
-        public byte[] Serialize(KafkaMessageEnvelope data, SerializationContext context) {
-            return _serializer.SerializeToBytes(data);
-        }
+    //    public byte[] Serialize(KafkaMessageEnvelope data, SerializationContext context) {
+    //        return _serializer.SerializeToBytes(data);
+    //    }
 
-        public KafkaMessageEnvelope Deserialize(ReadOnlySpan<byte> data, bool isNull, SerializationContext context) {
-            using var stream = new MemoryStream(data.ToArray());
-            return _serializer.Deserialize<KafkaMessageEnvelope>(stream);
-        }
-    }
+    //    public KafkaMessageEnvelope Deserialize(ReadOnlySpan<byte> data, bool isNull, SerializationContext context) {
+    //        using var stream = new MemoryStream(data.ToArray());
+    //        return _serializer.Deserialize<KafkaMessageEnvelope>(stream);
+    //    }
+    //}
 }
