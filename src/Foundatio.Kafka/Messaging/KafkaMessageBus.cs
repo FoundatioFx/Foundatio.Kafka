@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
+using Foundatio.AsyncEx;
 using Foundatio.Extensions;
 using Foundatio.Serializer;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     private readonly ProducerConfig _producerConfig;
     private readonly ConsumerConfig _consumerConfig;
     private readonly IProducer<string, KafkaMessageEnvelope> _producer;
+    private readonly AsyncLock _lock = new();
 
     public KafkaMessageBus(KafkaMessageBusOptions options) : base(options) {
         _adminClientConfig = CreateAdminConfig();
@@ -33,7 +35,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     }
  
     protected override Task PublishImplAsync(string messageType, object message, MessageOptions options, CancellationToken cancellationToken) {
-        ///Todo: review logging
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("PublishImplAsync([{messageType}])", messageType);
         ///Get rid of envelope (short type and header)
@@ -46,9 +47,9 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         (deliveryReport) => {
             ///rethrow error and logging ? rabbitmq
             if (deliveryReport.Error.Code != ErrorCode.NoError) {
-                _logger.LogTrace("Failed to deliver message: {Reason}", deliveryReport.Error.Reason);
+                if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Failed to deliver message: {Reason}", deliveryReport.Error.Reason);
             } else {
-                _logger.LogTrace("Produced message to: {TopicPartitionOffset}", deliveryReport.TopicPartitionOffset);
+                if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Produced message to: {TopicPartitionOffset}", deliveryReport.TopicPartitionOffset);
             }
         });
         return Task.CompletedTask;
@@ -96,7 +97,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         _listeningTask = Task.Run(async () => {
             using var consumer = new ConsumerBuilder<string, KafkaMessageEnvelope>(_consumerConfig).SetValueDeserializer(new KafkaSerializer(_serializer)).Build();
             consumer.Subscribe(_options.TopicName);
-
             _logger.LogInformation("EnsureListening consumer {Name} subscribed on {Topic}", consumer.Name, _options.Topic);
 
             try {
@@ -109,6 +109,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                     await OnMessageAsync(consumeResult).AnyContext();
                 }
             } catch (OperationCanceledException) {
+                consumer.Unsubscribe();
             } catch (Exception ex) {
                 _logger.LogDebug(ex, "Error consuming message: {Message}", ex.Message);
             } finally {
@@ -139,27 +140,25 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
 
     private async Task EnsureTopicCreatedAsync() {
         if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("EnsureTopicCreatedAsync {Topic}", _options.Topic);
-        using var adminClient = new AdminClientBuilder(_adminClientConfig).Build() ;
-        try {
-            var metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(2));
-            bool isTopicExist = metadata.Topics.Any(t => t.Topic == _options.TopicName);
-            if (!isTopicExist)
-                await adminClient.CreateTopicsAsync(new TopicSpecification[] { new TopicSpecification { Name = _options.TopicName, ReplicationFactor = _options.TopicReplicationFactor, NumPartitions = _options.TopicNumberOfPartitions, Configs = _options.TopicConfigs, ReplicasAssignments = _options.TopicReplicasAssignments } });
-            ///Logging and rethrow
-        } catch (CreateTopicsException e) {
-            if (e.Results[0].Error.Code != ErrorCode.TopicAlreadyExists) {
-                if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("An error occured creating topic {Topic}: {Reason}", _options.Topic, e.Results[0].Error.Reason);
+        using (await _lock.LockAsync().AnyContext()) {
+            using var adminClient = new AdminClientBuilder(_adminClientConfig).Build();
+            try {
+                var metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(2));
+                bool isTopicExist = metadata.Topics.Any(t => t.Topic == _options.TopicName);
+                if (!isTopicExist)
+                    await adminClient.CreateTopicsAsync(new TopicSpecification[] { new TopicSpecification { Name = _options.TopicName, ReplicationFactor = _options.TopicReplicationFactor, NumPartitions = _options.TopicNumberOfPartitions, Configs = _options.TopicConfigs, ReplicasAssignments = _options.TopicReplicasAssignments } });
+                ///Logging and rethrow
+            } catch (CreateTopicsException e) {
+                if (e.Results[0].Error.Code != ErrorCode.TopicAlreadyExists) {
+                    if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("An error occured creating topic {Topic}: {Reason}", _options.Topic, e.Results[0].Error.Reason);
 
-            } else {
-                if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Topic {Topic} already exists", _options.Topic);
+                } else {
+                    if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Topic {Topic} already exists", _options.Topic);
+                }
             }
-        } 
+        }
     }
 
-    /// <summary>
-    /// check if disposable, pass all options
-    /// </summary>
-    /// <returns></returns>
     private ClientConfig CreateClientConfig() {
         return new ClientConfig {
             SaslMechanism = _options.SaslMechanism,
