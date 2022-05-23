@@ -37,11 +37,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     protected override Task PublishImplAsync(string messageType, object message, MessageOptions options, CancellationToken cancellationToken) {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("PublishImplAsync([{messageType}])", messageType);
-        ///Get rid of envelope (short type and header)
-
         _producer.Produce(_options.TopicName, new Message<string, byte[]> { Key = messageType, Value = SerializeMessageBody(messageType, message) },
         (deliveryReport) => {
-            ///rethrow error and logging ? rabbitmq
             if (deliveryReport.Error.Code != ErrorCode.NoError) {
                 if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Failed to deliver message: {Reason}", deliveryReport.Error.Reason);
             } else {
@@ -69,7 +66,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     }
 
     protected override async Task EnsureTopicSubscriptionAsync(CancellationToken cancellationToken) {
-        // Check if we create topic here / check redis / rabbit implementation, we cache the result under isSubscribed and use an async lock.
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("EnsureTopicSubscriptionAsync");
         await EnsureTopicCreatedAsync();
@@ -102,7 +98,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                 while (!_messageBusDisposedCancellationTokenSource.IsCancellationRequested) {
                     var consumeResult = consumer.Consume(_messageBusDisposedCancellationTokenSource.Token);
 
-                    if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace($"Consumed topic: {consumeResult.Topic} by consumer : {consumer.Name} partition {consumeResult.TopicPartition}");
+                    if (_logger.IsEnabled(LogLevel.Trace))
+                        _logger.LogTrace($"Consumed topic: {consumeResult.Topic} by consumer : {consumer.Name} partition {consumeResult.TopicPartition}");
                     await OnMessageAsync(consumeResult).AnyContext();
                 }
             } catch (OperationCanceledException) {
@@ -117,7 +114,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
 
     public override void Dispose() {
         if (_isDisposed) {
-            _logger.LogTrace("MessageBus {MessageBusId} dispose was already called", MessageBusId);
+            if (_logger.IsEnabled(LogLevel.Trace))
+                _logger.LogTrace("MessageBus {MessageBusId} dispose was already called", MessageBusId);
             return;
         }
         _isDisposed = true;
@@ -146,7 +144,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                 bool isTopicExist = metadata.Topics.Any(t => t.Topic == _options.TopicName);
                 if (!isTopicExist)
                     await adminClient.CreateTopicsAsync(new TopicSpecification[] { new TopicSpecification { Name = _options.TopicName, ReplicationFactor = _options.TopicReplicationFactor, NumPartitions = _options.TopicNumberOfPartitions, Configs = _options.TopicConfigs, ReplicasAssignments = _options.TopicReplicasAssignments } });
-                ///Logging and rethrow
             } catch (CreateTopicsException e) {
                 if (e.Results[0].Error.Code != ErrorCode.TopicAlreadyExists) {
                     if (_logger.IsEnabled(LogLevel.Trace)) 
@@ -298,26 +295,4 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         };
         return config;
     }
-
-    //public class KafkaMessageEnvelope {
-    //    public string Type { get; set; }
-    //    public byte[] Data { get; set; }
-    //}
-
-    //public class KafkaSerializer : Confluent.Kafka.ISerializer<KafkaMessageEnvelope>, IDeserializer<KafkaMessageEnvelope> {
-    //    private readonly ISerializer _serializer;
-
-    //    public KafkaSerializer(ISerializer serializer) {
-    //        _serializer = serializer;
-    //    }
-
-    //    public byte[] Serialize(KafkaMessageEnvelope data, SerializationContext context) {
-    //        return _serializer.SerializeToBytes(data);
-    //    }
-
-    //    public KafkaMessageEnvelope Deserialize(ReadOnlySpan<byte> data, bool isNull, SerializationContext context) {
-    //        using var stream = new MemoryStream(data.ToArray());
-    //        return _serializer.Deserialize<KafkaMessageEnvelope>(stream);
-    //    }
-    //}
 }
