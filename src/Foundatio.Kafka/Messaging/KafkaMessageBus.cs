@@ -33,7 +33,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     public KafkaMessageBus(Builder<KafkaMessageBusOptionsBuilder, KafkaMessageBusOptions> config)
         : this(config(new KafkaMessageBusOptionsBuilder()).Build()) {
     }
- 
+
     protected override Task PublishImplAsync(string messageType, object message, MessageOptions options, CancellationToken cancellationToken) {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("PublishImplAsync([{messageType}])", messageType);
@@ -52,7 +52,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         if (_subscribers.IsEmpty)
             return;
         if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("OnMessage( topic: {Topic},groupId: {GroupId} partition: [{Partition}] offset: [{Offset}] partitionOffset; [{TopicPartitionOffset}])", consumeResult.Topic,_consumerConfig.GroupId, consumeResult.Partition, consumeResult.Offset, consumeResult.TopicPartitionOffset);
+            _logger.LogTrace("OnMessage( topic: {Topic},groupId: {GroupId} partition: [{Partition}] offset: [{Offset}] partitionOffset; [{TopicPartitionOffset}])", consumeResult.Topic, _consumerConfig.GroupId, consumeResult.Partition, consumeResult.Offset, consumeResult.TopicPartitionOffset);
 
         IMessage message;
         try {
@@ -72,7 +72,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         EnsureListening();
     }
 
-    protected virtual IMessage ConvertToMessage(string messageType,byte[] data) {
+    protected virtual IMessage ConvertToMessage(string messageType, byte[] data) {
         return new Message(() => DeserializeMessageBody(messageType, data)) {
             Type = messageType,
             ClrType = GetMappedMessageType(messageType),
@@ -146,7 +146,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                     await adminClient.CreateTopicsAsync(new TopicSpecification[] { new TopicSpecification { Name = _options.TopicName, ReplicationFactor = _options.TopicReplicationFactor, NumPartitions = _options.TopicNumberOfPartitions, Configs = _options.TopicConfigs, ReplicasAssignments = _options.TopicReplicasAssignments } });
             } catch (CreateTopicsException e) {
                 if (e.Results[0].Error.Code != ErrorCode.TopicAlreadyExists) {
-                    if (_logger.IsEnabled(LogLevel.Trace)) 
+                    if (_logger.IsEnabled(LogLevel.Trace))
                         _logger.LogTrace("An error occured creating topic {Topic}: {Reason}", _options.Topic, e.Results[0].Error.Reason);
 
                 } else {
@@ -268,30 +268,30 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     private ConsumerConfig CreateConsumerConfig() {
         var _clientConfig = CreateClientConfig();
         var config = new ConsumerConfig(_clientConfig) {
-             ConsumeResultFields = _options.ConsumeResultFields,
-             AutoOffsetReset = _options.AutoOffsetReset,
-             GroupId = _options.GroupId,
-             GroupInstanceId = _options.GroupInstanceId,
-             PartitionAssignmentStrategy = _options.PartitionAssignmentStrategy,
-             SessionTimeoutMs = _options.SessionTimeoutMs,
-             HeartbeatIntervalMs = _options.HeartbeatIntervalMs,
-             GroupProtocolType = _options.GroupProtocolType,
-             CoordinatorQueryIntervalMs = _options.CoordinatorQueryIntervalMs,
-             MaxPollIntervalMs = _options.MaxPollIntervalMs,
-             EnableAutoCommit = _options.EnableAutoCommit,
-             AutoCommitIntervalMs = _options.AutoCommitIntervalMs,
-             EnableAutoOffsetStore = _options.EnableAutoOffsetStore,
-             QueuedMinMessages = _options.QueuedMinMessages,
-             QueuedMaxMessagesKbytes = _options.QueuedMaxMessagesKbytes,
-             FetchWaitMaxMs = _options.FetchWaitMaxMs,
-             MaxPartitionFetchBytes = _options.MaxPartitionFetchBytes,
-             FetchMaxBytes = _options.FetchMaxBytes,
-             FetchMinBytes = _options.FetchMinBytes,
-             FetchErrorBackoffMs = _options.FetchErrorBackoffMs,
-             IsolationLevel = _options.IsolationLevel,
-             EnablePartitionEof = _options.EnablePartitionEof,
-             CheckCrcs = _options.CheckCrcs,
-             AllowAutoCreateTopics = _options.AllowAutoCreateTopics
+            ConsumeResultFields = _options.ConsumeResultFields,
+            AutoOffsetReset = _options.AutoOffsetReset,
+            GroupId = _options.GroupId,
+            GroupInstanceId = _options.GroupInstanceId,
+            PartitionAssignmentStrategy = _options.PartitionAssignmentStrategy,
+            SessionTimeoutMs = _options.SessionTimeoutMs,
+            HeartbeatIntervalMs = _options.HeartbeatIntervalMs,
+            GroupProtocolType = _options.GroupProtocolType,
+            CoordinatorQueryIntervalMs = _options.CoordinatorQueryIntervalMs,
+            MaxPollIntervalMs = _options.MaxPollIntervalMs,
+            EnableAutoCommit = _options.EnableAutoCommit,
+            AutoCommitIntervalMs = _options.AutoCommitIntervalMs,
+            EnableAutoOffsetStore = _options.EnableAutoOffsetStore,
+            QueuedMinMessages = _options.QueuedMinMessages,
+            QueuedMaxMessagesKbytes = _options.QueuedMaxMessagesKbytes,
+            FetchWaitMaxMs = _options.FetchWaitMaxMs,
+            MaxPartitionFetchBytes = _options.MaxPartitionFetchBytes,
+            FetchMaxBytes = _options.FetchMaxBytes,
+            FetchMinBytes = _options.FetchMinBytes,
+            FetchErrorBackoffMs = _options.FetchErrorBackoffMs,
+            IsolationLevel = _options.IsolationLevel,
+            EnablePartitionEof = _options.EnablePartitionEof,
+            CheckCrcs = _options.CheckCrcs,
+            AllowAutoCreateTopics = _options.AllowAutoCreateTopics
         };
         return config;
     }

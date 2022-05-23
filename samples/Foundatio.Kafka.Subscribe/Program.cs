@@ -17,10 +17,10 @@ namespace Foundatio.Kafka.Subscribe {
                     TopicName = "localTopic1",
                     GroupId = Guid.NewGuid().ToString(),
                     AutoOffSetReset = AutoOffsetReset.Earliest,
-                    EnableAutoCommit=true,
-                    EnableAutoOffsetStore=true
-                });;
-                messageBuses.Add(messageBus);                
+                    EnableAutoCommit = true,
+                    EnableAutoOffsetStore = true
+                }); ;
+                messageBuses.Add(messageBus);
                 tasks.Add(messageBus.SubscribeAsync<MyMessage>(msg => { Console.WriteLine($"Got subscriber {messageBus.MessageBusId} message: {msg.Hey}"); }));
             }
             await Task.WhenAll(tasks);
