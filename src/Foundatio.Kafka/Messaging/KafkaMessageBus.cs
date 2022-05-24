@@ -37,7 +37,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     public KafkaMessageBus(Builder<KafkaMessageBusOptionsBuilder, KafkaMessageBusOptions> config)
         : this(config(new KafkaMessageBusOptionsBuilder()).Build()) {
     }
-
+ 
     protected override Task PublishImplAsync(string messageType, object message, MessageOptions options, CancellationToken cancellationToken) {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("PublishImplAsync([{messageType}])", messageType);
@@ -78,7 +78,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
             return;
         }
     }
-
+  
     protected override async Task EnsureTopicSubscriptionAsync(CancellationToken cancellationToken) {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("EnsureTopicSubscriptionAsync");

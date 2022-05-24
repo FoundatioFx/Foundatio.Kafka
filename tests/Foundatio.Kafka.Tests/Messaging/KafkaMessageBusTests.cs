@@ -30,7 +30,7 @@ public class KafkaMessageBusTests : MessageBusTestBase {
     }
 
     [Fact]
-    public override Task CanSendMessageAsync() {
+    public override Task CanSendMessageAsync() {        
         return base.CanSendMessageAsync();
     }
 
@@ -50,7 +50,7 @@ public class KafkaMessageBusTests : MessageBusTestBase {
     }
 
     [Fact]
-    public override Task CanSubscribeConcurrentlyAsync() {
+    public override  Task CanSubscribeConcurrentlyAsync() {
         return base.CanSubscribeConcurrentlyAsync();
     }
 

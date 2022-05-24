@@ -1572,3 +1572,4 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
         return this;
     } 
 }
+
