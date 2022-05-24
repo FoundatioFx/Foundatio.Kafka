@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,9 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     private readonly ConsumerConfig _consumerConfig;
     private readonly IProducer<string, byte[]> _producer;
     private readonly AsyncLock _lock = new();
+    private const string MessageType = "MessageType";
+    private const string ContentType = "ContentType";
+    private const string CorrelationId = "CorrelationId";
 
     public KafkaMessageBus(KafkaMessageBusOptions options) : base(options) {
         _adminClientConfig = CreateAdminConfig();
@@ -37,7 +41,18 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     protected override Task PublishImplAsync(string messageType, object message, MessageOptions options, CancellationToken cancellationToken) {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("PublishImplAsync([{messageType}])", messageType);
-        _producer.Produce(_options.TopicName, new Message<string, byte[]> { Key = messageType, Value = SerializeMessageBody(messageType, message) },
+        var headers = new Headers();
+        headers.Add(new Header(MessageType, Encoding.UTF8.GetBytes(messageType)));
+        headers.Add(new Header(ContentType, Encoding.UTF8.GetBytes(_options.ContentType)));
+        if (options?.CorrelationId != null)
+            headers.Add(new Header(CorrelationId, Encoding.UTF8.GetBytes(options.CorrelationId)));
+        var publishMessage = new Message<string, byte[]> {
+            Key = _options.PublishKey,
+            Value = SerializeMessageBody(messageType, message),
+            Headers = headers
+        };
+        
+        _producer.Produce(_options.TopicName, publishMessage,
         (deliveryReport) => {
             if (deliveryReport.Error.Code != ErrorCode.NoError) {
                 if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Failed to deliver message: {Reason}", deliveryReport.Error.Reason);
@@ -56,13 +71,12 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
 
         IMessage message;
         try {
-            message = ConvertToMessage(consumeResult.Message.Key, consumeResult.Message.Value);
+            message = ConvertToMessage(Encoding.UTF8.GetString(consumeResult.Message.Headers.SingleOrDefault(x => x.Key.Equals(MessageType)).GetValueBytes()), consumeResult.Message.Value);
+            await SendMessageToSubscribersAsync(message).AnyContext();
         } catch (Exception ex) {
             _logger.LogWarning(ex, "OnMessage({Offset}] {Partition}) Error deserializing message: {Message}", consumeResult.Offset, consumeResult.TopicPartition.Partition, ex.Message);
             return;
         }
-
-        await SendMessageToSubscribersAsync(message).AnyContext();
     }
 
     protected override async Task EnsureTopicSubscriptionAsync(CancellationToken cancellationToken) {
