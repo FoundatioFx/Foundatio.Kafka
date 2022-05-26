@@ -20,6 +20,9 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     private readonly ConsumerConfig _consumerConfig;
     private readonly IProducer<string, byte[]> _producer;
     private readonly AsyncLock _lock = new();
+    private const string MessageType = "MessageType";
+    private const string ContentType = "ContentType";
+    private const string CorrelationId = "CorrelationId";
 
     public KafkaMessageBus(KafkaMessageBusOptions options) : base(options) {
         _adminClientConfig = CreateAdminConfig();
@@ -94,6 +97,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         _logger.LogTrace("EnsureTopicSubscriptionAsync");
         await EnsureTopicCreatedAsync();
         EnsureListening();
+        await Task.Delay(15000);
+        EnsureListening();
     }
 
     protected virtual IMessage ConvertToMessage(string messageType, byte[] data) {
@@ -163,7 +168,11 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         _messageBusDisposedCancellationTokenSource.Dispose();
         base.Dispose();
     }
-    
+    private void OnKafkaClientMessage(IClient client, LogMessage message) {
+        if (_logger.IsEnabled(LogLevel.Debug))
+            _logger.LogDebug("[{LogLevel}] Client {Name} Message :{Message}", message.Level, client.Name, message.Message);
+    }
+
     private async Task EnsureTopicCreatedAsync() {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("EnsureTopicCreatedAsync Topic={Topic}", _options.Topic);
