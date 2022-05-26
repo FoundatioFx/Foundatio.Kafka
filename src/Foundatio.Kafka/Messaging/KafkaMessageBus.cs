@@ -81,8 +81,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
             _logger.LogTrace("EnsureTopicSubscriptionAsync");
         await EnsureTopicCreatedAsync();
         EnsureListening();
-        await Task.Delay(15000);
-        EnsureListening();
     }
     protected virtual IMessage ConvertToMessage(string messageType, byte[] data) {
         return new Message(() => DeserializeMessageBody(messageType, data)) {

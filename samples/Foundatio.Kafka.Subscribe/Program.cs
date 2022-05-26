@@ -21,7 +21,7 @@ public class Program {
         for (int i = 0; i < 1; i++) {
             var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
                 BootstrapServers = "localhost:9092",
-                TopicName = "localTopic20",
+                TopicName = "sample-topic",
                 GroupId = Guid.NewGuid().ToString(),
                 AutoOffSetReset = AutoOffsetReset.Earliest,
                 EnableAutoCommit = true,
