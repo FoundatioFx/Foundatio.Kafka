@@ -15,11 +15,9 @@ public class Program {
         logger.LogInformation("Enter the message and press enter to send:");
         using var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
             BootstrapServers = "localhost:9092",
-            Topic = "sample-topic",
-            GroupId = "test-group-1",
-            //EnableAutoCommit = false,
-            //EnableAutoOffsetStore = false,
-            LoggerFactory = loggerFactory
+            TopicName = "sample-topic",
+            LoggerFactory = loggerFactory,
+            GroupId = Guid.NewGuid().ToString()
         });
 
         string message;

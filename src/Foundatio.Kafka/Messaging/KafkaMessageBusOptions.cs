@@ -5,29 +5,15 @@ using Confluent.Kafka;
 namespace Foundatio.Messaging;
 
 public class KafkaMessageBusOptions : SharedMessageBusOptions {
-    /// <summary>
-    /// bootstrap.servers
-    /// <summary>
+    
     public string BootstrapServers { get; set; }
 
-    /// <summary>
-    /// group.id
-    /// <summary>
     public string GroupId { get; set; }
 
-    /// <summary>
-    /// Message Header Key of MessageType
-    /// </summary>
     public string MessageType { get; set; } = "MessageType";
 
-    /// <summary>
-    /// Message Header Key of ContentType
-    /// </summary>
     public string ContentType { get; set; } = "text/json";
 
-    /// <summary>
-    /// Publish message key
-    /// </summary>
     public string PublishKey { get; set; }
 
     public int AutoCommitIntervalMs { get; set; } = 5000;
