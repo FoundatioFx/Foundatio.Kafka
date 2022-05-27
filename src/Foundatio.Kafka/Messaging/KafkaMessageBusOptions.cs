@@ -16,6 +16,8 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
 
     public string PublishKey { get; set; }
 
+    public Func<ConsumeResult<string, byte[]>, string> ResolveMessageType { get; set; }
+
     public int AutoCommitIntervalMs { get; set; } = 5000;
 
     public AutoOffsetReset AutoOffSetReset { get; set; }
