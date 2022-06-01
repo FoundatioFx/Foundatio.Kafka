@@ -5,7 +5,7 @@ using Confluent.Kafka;
 namespace Foundatio.Messaging;
 
 public class KafkaMessageBusOptions : SharedMessageBusOptions {
-    
+
     public string BootstrapServers { get; set; }
 
     public string GroupId { get; set; }
@@ -18,10 +18,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
 
     public Func<ConsumeResult<string, byte[]>, string> ResolveMessageType { get; set; }
 
-    public int AutoCommitIntervalMs { get; set; } = 5000;
-
-    public AutoOffsetReset AutoOffSetReset { get; set; }
-
+    public int? AutoCommitIntervalMs { get; set; }
     public IDictionary<string, object> Arguments { get; set; }
 
     public string SslCertificateLocation { get; set; }
@@ -47,11 +44,6 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     } = -1;
 
     public Dictionary<string, string> TopicConfigs {
-        get;
-        set;
-    }
-
-    public string TopicName {
         get;
         set;
     }
@@ -185,7 +177,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
 
     // Producer config throws exception with this property
     //public string DeliveryReportFields { get; set; }
-     
+
     public int? RequestTimeoutMs { get; set; }
 
     public int? MessageTimeoutMs { get; set; }
@@ -229,7 +221,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions {
     public string GroupInstanceId { get; set; }
 
     public PartitionAssignmentStrategy? PartitionAssignmentStrategy { get; set; }
-    
+
     public int? SessionTimeoutMs { get; set; }
 
     public int? HeartbeatIntervalMs { get; set; }
@@ -283,7 +275,7 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
     }
 
     public KafkaMessageBusOptionsBuilder AutoOffSetReset(Confluent.Kafka.AutoOffsetReset? autoOffSetReset) {
-        Target.AutoOffSetReset = autoOffSetReset ?? throw new ArgumentNullException(nameof(autoOffSetReset));
+        Target.AutoOffsetReset = autoOffSetReset ?? throw new ArgumentNullException(nameof(autoOffSetReset));
         return this;
     }
 
@@ -397,11 +389,6 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
         return this;
     }
 
-    public KafkaMessageBusOptionsBuilder TopicName(string topicName) {
-        Target.TopicName = topicName ?? throw new ArgumentNullException(nameof(topicName));
-        return this;
-    }
-
     public KafkaMessageBusOptionsBuilder Debug(string? debug) {
         Target.Debug = debug ?? throw new ArgumentNullException(nameof(debug));
         return this;
@@ -411,6 +398,7 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
         Target.SocketTimeoutMs = socketTimeoutMs ?? throw new ArgumentNullException(nameof(socketTimeoutMs));
         return this;
     }
+
     public KafkaMessageBusOptionsBuilder SocketSendBufferBytes(int? socketSendBufferBytes) {
         Target.SocketSendBufferBytes = socketSendBufferBytes ?? throw new ArgumentNullException(nameof(socketSendBufferBytes));
         return this;
@@ -783,6 +771,6 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
     public KafkaMessageBusOptionsBuilder AllowAutoCreateTopics(bool? allowAutoCreateTopics) {
         Target.AllowAutoCreateTopics = allowAutoCreateTopics ?? throw new ArgumentNullException(nameof(allowAutoCreateTopics));
         return this;
-    } 
+    }
 }
 
