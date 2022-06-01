@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -165,10 +165,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         _messageBusDisposedCancellationTokenSource.Cancel();
         _messageBusDisposedCancellationTokenSource.Dispose();
         base.Dispose();
-    }
-    private void OnKafkaClientMessage(IClient client, LogMessage message) {
-        if (_logger.IsEnabled(LogLevel.Debug))
-            _logger.LogDebug("[{LogLevel}] Client {Name} Message :{Message}", message.Level, client.Name, message.Message);
     }
 
     private async Task EnsureTopicCreatedAsync() {

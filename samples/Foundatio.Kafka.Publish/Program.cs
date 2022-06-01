@@ -16,7 +16,7 @@ public class Program {
         logger.LogInformation("Enter the message and press enter to send:");
         using var messageBus = new KafkaMessageBus(new KafkaMessageBusOptions {
             BootstrapServers = "localhost:9092",
-            Topic = "sample-topic12",
+            Topic = "sample-topic",
             ClientId = Dns.GetHostName(),
             LoggerFactory = loggerFactory,
         });
