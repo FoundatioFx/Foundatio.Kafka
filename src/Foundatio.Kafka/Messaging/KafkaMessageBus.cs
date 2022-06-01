@@ -136,6 +136,10 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                 while (!_messageBusDisposedCancellationTokenSource.IsCancellationRequested) {
                     var consumeResult = consumer.Consume(_messageBusDisposedCancellationTokenSource.Token);
                     await OnMessageAsync(consumeResult).AnyContext();
+                    if (_options.EnableAutoCommit.HasValue && !_options.EnableAutoCommit.Value)
+                        consumer.Commit(consumeResult);
+                    if (_options.EnableAutoOffsetStore.HasValue && !_options.EnableAutoOffsetStore.Value)
+                        consumer.StoreOffset(consumeResult);
                 }
             } catch (OperationCanceledException) {
                 consumer.Unsubscribe();
