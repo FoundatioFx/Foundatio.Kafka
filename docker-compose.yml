@@ -3,7 +3,6 @@ version: '2.1'
 
 services:
   zookeeper:
-    platform: linux/x86_64
     image: confluentinc/cp-zookeeper:7.1.1
     hostname: zookeeper
     container_name: zookeeper
@@ -15,7 +14,6 @@ services:
       ZOOKEEPER_SERVERS: zookeeper:2888:3888
 
   kafka:
-    platform: linux/x86_64
     image: confluentinc/cp-kafka:7.1.1
     hostname: kafka
     container_name: kafka
