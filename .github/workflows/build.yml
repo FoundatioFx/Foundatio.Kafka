@@ -9,13 +9,9 @@ jobs:
   buildverifydocker:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
     - name: Start Services
-      if: hashFiles('docker-compose.yml') != ''
       run: docker compose up -d && docker compose up ready || true
+    - name: Sleep
+      run: sleep 10
     - name: Verify Services
-      if: hashFiles('docker-compose.yml') != ''
       run: docker run --network=host edenhill/kcat:1.7.1 -b localhost:9092 -L -T
