@@ -1,37 +1,30 @@
 # https://github.com/conduktor/kafka-stack-docker-compose/blob/master/zk-single-kafka-single.yml
-version: '3.8'
+version: '2.1'
 
 services:
-  zookeeper:
-    platform: linux/x86_64
+  zoo1:
     image: confluentinc/cp-zookeeper:7.1.1
-    hostname: zookeeper
-    container_name: zookeeper
+    hostname: zoo1
+    container_name: zoo1
     ports:
       - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_SERVER_ID: 1
-      ZOOKEEPER_SERVERS: zookeeper:2888:3888
-    healthcheck:
-      test: nc -z zookeeper 2181 || exit -1
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      ZOOKEEPER_SERVERS: zoo1:2888:3888
 
-  kafka:
-    platform: linux/x86_64
+  kafka1:
     image: confluentinc/cp-kafka:7.1.1
-    hostname: kafka
-    container_name: kafka
+    hostname: kafka1
+    container_name: kafka1
     ports:
       - "9092:9092"
       - "9999:9999"
     environment:
-      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka1:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
-      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
       KAFKA_BROKER_ID: 1
       KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -41,18 +34,12 @@ services:
       KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
-    healthcheck:
-      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:9092", "--list"]
-      start_period: 15s
-      interval: 30s
-      timeout: 10s
-      retries: 3
     depends_on:
-      - zookeeper
+      - zoo1
 
   ready:
     image: dadarek/wait-for-dependencies
-    command: zookeeper:2181 kafka:9092
+    command: zoo1:2181 kafka1:9092
     depends_on:
-      kafka:
-        condition: service_healthy
+      - zoo1
+      - kafka1
