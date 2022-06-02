@@ -37,7 +37,7 @@ services:
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
     healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "9092" ]
+      test: cub kafka-ready 1 40 -b localhost:9092
       start_period: 15s
       interval: 5s
       timeout: 10s
