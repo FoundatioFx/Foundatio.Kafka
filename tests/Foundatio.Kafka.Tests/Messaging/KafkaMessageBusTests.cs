@@ -30,6 +30,7 @@ public class KafkaMessageBusTests : MessageBusTestBase {
 
     [Fact]
     public override Task CanSendMessageAsync() {
+        Log.MinimumLevel = LogLevel.Trace;
         return base.CanSendMessageAsync();
     }
 
