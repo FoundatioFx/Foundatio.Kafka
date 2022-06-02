@@ -3,6 +3,7 @@ version: '2.1'
 
 services:
   zookeeper:
+    platform: linux/x86_64
     image: confluentinc/cp-zookeeper:7.1.1
     hostname: zookeeper
     container_name: zookeeper
@@ -14,6 +15,7 @@ services:
       ZOOKEEPER_SERVERS: zookeeper:2888:3888
 
   kafka:
+    platform: linux/x86_64
     image: confluentinc/cp-kafka:7.1.1
     hostname: kafka
     container_name: kafka
@@ -34,6 +36,12 @@ services:
       KAFKA_JMX_HOSTNAME: ${DOCKER_HOST_IP:-127.0.0.1}
       KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
       KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:9092", "--list"]
+      start_period: 15s
+      interval: 5s
+      timeout: 10s
+      retries: 10
     depends_on:
       - zookeeper
 
@@ -41,5 +49,5 @@ services:
     image: dadarek/wait-for-dependencies
     command: zookeeper:2181 kafka:9092
     depends_on:
-      - zookeeper
-      - kafka
+      kafka:
+        condition: service_healthy
