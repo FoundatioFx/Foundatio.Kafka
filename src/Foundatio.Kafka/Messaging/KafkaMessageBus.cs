@@ -20,9 +20,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     private readonly ConsumerConfig _consumerConfig;
     private readonly IProducer<string, byte[]> _producer;
     private readonly AsyncLock _lock = new();
-    private const string MessageType = "MessageType";
-    private const string ContentType = "ContentType";
-    private const string CorrelationId = "CorrelationId";
 
     public KafkaMessageBus(KafkaMessageBusOptions options) : base(options) {
         _adminClientConfig = CreateAdminConfig();
@@ -128,7 +125,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                 .SetOffsetsCommittedHandler(LogOffsetsCommittedHandler)
                 .SetOAuthBearerTokenRefreshHandler(LogOAuthBearerTokenRefreshHandler)
                 .Build();
-   
+
             consumer.Subscribe(_options.Topic);
             _logger.LogInformation("EnsureListening Consumer={ConsumerName} Topic={Topic}", consumer.Name, _options.Topic);
 
@@ -136,10 +133,14 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                 while (!_messageBusDisposedCancellationTokenSource.IsCancellationRequested) {
                     var consumeResult = consumer.Consume(_messageBusDisposedCancellationTokenSource.Token);
                     await OnMessageAsync(consumeResult).AnyContext();
-                    if (_options.EnableAutoCommit.HasValue && !_options.EnableAutoCommit.Value)
+                    if (_options.EnableAutoCommit.HasValue && !_options.EnableAutoCommit.Value) {
+                        _logger.LogDebug("Manual Commit: {Topic}", _options.Topic);
                         consumer.Commit(consumeResult);
-                    if (_options.EnableAutoOffsetStore.HasValue && !_options.EnableAutoOffsetStore.Value)
+                    }
+                    if (_options.EnableAutoOffsetStore.HasValue && !_options.EnableAutoOffsetStore.Value) {
+                        _logger.LogDebug("Manual StoreOffset: {Topic}", _options.Topic);
                         consumer.StoreOffset(consumeResult);
+                    }
                 }
             } catch (OperationCanceledException) {
                 consumer.Unsubscribe();
@@ -191,8 +192,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
                     await adminClient.CreateTopicsAsync(new TopicSpecification[] {
                         new() {
                             Name = _options.Topic,
-                            ReplicationFactor = _options.TopicReplicationFactor,
-                            NumPartitions = _options.TopicNumberOfPartitions,
+                            ReplicationFactor = _options.TopicReplicationFactor.Value,
+                            NumPartitions = _options.TopicNumberOfPartitions.Value,
                             Configs = _options.TopicConfigs,
                             ReplicasAssignments = _options.TopicReplicasAssignments
                         }
@@ -213,18 +214,17 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
             throw;
         }
     }
-    
+
     private void LogHandler(IClient client, LogMessage message) {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("[{LogLevel}] Client log: {Message}", message.Level, message.Message);
     }
 
-    private void LogStatisticsHandler(IClient client, string statistics)
-    {
+    private void LogStatisticsHandler(IClient client, string statistics) {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("Client Statistics: {Statistics}", statistics);
     }
-    
+
     private void LogPartitionAssignmentHandler(IConsumer<string, byte[]> consumer, List<TopicPartition> list) {
         if (_logger.IsEnabled(LogLevel.Trace))
             _logger.LogTrace("Consumer partitions assigned: {@Partitions}", list);
@@ -256,37 +256,37 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     }
 
     private ClientConfig CreateClientConfig() {
-        var clientConfig = new ClientConfig { BootstrapServers = "localhost:9092", ClientId = System.Net.Dns.GetHostName() };
-        if (!string.IsNullOrEmpty(_options.ClientId)) clientConfig.ClientId = _options.ClientId;
-        if (!string.IsNullOrEmpty(_options.BootstrapServers)) clientConfig.BootstrapServers = _options.BootstrapServers;
-        if (!string.IsNullOrEmpty(_options.TopicBlacklist)) clientConfig.TopicBlacklist = _options.TopicBlacklist;
-        if (!string.IsNullOrEmpty(_options.Debug)) clientConfig.Debug = _options.Debug;
-        if (!string.IsNullOrEmpty(_options.SslCipherSuites)) clientConfig.SslCipherSuites = _options.SslCipherSuites;
-        if (!string.IsNullOrEmpty(_options.SslCurvesList)) clientConfig.SslCurvesList = _options.SslCurvesList;
-        if (!string.IsNullOrEmpty(_options.SslSigalgsList)) clientConfig.SslSigalgsList = _options.SslSigalgsList;
-        if (!string.IsNullOrEmpty(_options.SslKeyLocation)) clientConfig.SslKeyLocation = _options.SslKeyLocation;
-        if (!string.IsNullOrEmpty(_options.SslKeyPassword)) clientConfig.SslKeyPassword = _options.SslKeyPassword;
-        if (!string.IsNullOrEmpty(_options.SslKeyPem)) clientConfig.SslKeyPem = _options.SslKeyPem;
-        if (!string.IsNullOrEmpty(_options.SslCertificateLocation)) clientConfig.SslCertificateLocation = _options.SslCertificateLocation;
-        if (!string.IsNullOrEmpty(_options.SslCertificatePem)) clientConfig.SslCertificatePem = _options.SslCertificatePem;
-        if (!string.IsNullOrEmpty(_options.SslCaLocation)) clientConfig.SslCaLocation = _options.SslCaLocation;
-        if (!string.IsNullOrEmpty(_options.SslCaPem)) clientConfig.SslCaPem = _options.SslCaPem;
-        if (!string.IsNullOrEmpty(_options.SslCaCertificateStores)) clientConfig.SslCaCertificateStores = _options.SslCaCertificateStores;
-        if (!string.IsNullOrEmpty(_options.SslCrlLocation)) clientConfig.SslCrlLocation = _options.SslCrlLocation;
-        if (!string.IsNullOrEmpty(_options.SslKeystoreLocation)) clientConfig.SslKeystoreLocation = _options.SslKeystoreLocation;
-        if (!string.IsNullOrEmpty(_options.SslKeystorePassword)) clientConfig.SslKeystorePassword = _options.SslKeystorePassword;
-        if (!string.IsNullOrEmpty(_options.SslEngineLocation)) clientConfig.SslEngineLocation = _options.SslEngineLocation;
-        if (!string.IsNullOrEmpty(_options.SslEngineId)) clientConfig.SslEngineId = _options.SslEngineId;
-        if (!string.IsNullOrEmpty(_options.BrokerVersionFallback)) clientConfig.BrokerVersionFallback = _options.BrokerVersionFallback;
-        if (!string.IsNullOrEmpty(_options.SaslKerberosServiceName)) clientConfig.SaslKerberosServiceName = _options.SaslKerberosServiceName;
-        if (!string.IsNullOrEmpty(_options.SaslKerberosPrincipal)) clientConfig.SaslKerberosPrincipal = _options.SaslKerberosPrincipal;
-        if (!string.IsNullOrEmpty(_options.SaslKerberosKinitCmd)) clientConfig.SaslKerberosKinitCmd = _options.SaslKerberosKinitCmd;
-        if (!string.IsNullOrEmpty(_options.SaslKerberosKeytab)) clientConfig.SaslKerberosKeytab = _options.SaslKerberosKeytab;
-        if (!string.IsNullOrEmpty(_options.SaslUsername)) clientConfig.SaslUsername = _options.SaslUsername;
-        if (!string.IsNullOrEmpty(_options.SaslPassword)) clientConfig.SaslPassword = _options.SaslPassword;
-        if (!string.IsNullOrEmpty(_options.SaslOauthbearerConfig)) clientConfig.SaslOauthbearerConfig = _options.SaslOauthbearerConfig;
-        if (!string.IsNullOrEmpty(_options.PluginLibraryPaths)) clientConfig.PluginLibraryPaths = _options.PluginLibraryPaths;
-        if (!string.IsNullOrEmpty(_options.ClientRack)) clientConfig.ClientRack = _options.ClientRack;
+        var clientConfig = new ClientConfig();
+        if (!String.IsNullOrEmpty(_options.ClientId)) clientConfig.ClientId = _options.ClientId;
+        if (!String.IsNullOrEmpty(_options.BootstrapServers)) clientConfig.BootstrapServers = _options.BootstrapServers;
+        if (!String.IsNullOrEmpty(_options.TopicBlacklist)) clientConfig.TopicBlacklist = _options.TopicBlacklist;
+        if (!String.IsNullOrEmpty(_options.Debug)) clientConfig.Debug = _options.Debug;
+        if (!String.IsNullOrEmpty(_options.SslCipherSuites)) clientConfig.SslCipherSuites = _options.SslCipherSuites;
+        if (!String.IsNullOrEmpty(_options.SslCurvesList)) clientConfig.SslCurvesList = _options.SslCurvesList;
+        if (!String.IsNullOrEmpty(_options.SslSigalgsList)) clientConfig.SslSigalgsList = _options.SslSigalgsList;
+        if (!String.IsNullOrEmpty(_options.SslKeyLocation)) clientConfig.SslKeyLocation = _options.SslKeyLocation;
+        if (!String.IsNullOrEmpty(_options.SslKeyPassword)) clientConfig.SslKeyPassword = _options.SslKeyPassword;
+        if (!String.IsNullOrEmpty(_options.SslKeyPem)) clientConfig.SslKeyPem = _options.SslKeyPem;
+        if (!String.IsNullOrEmpty(_options.SslCertificateLocation)) clientConfig.SslCertificateLocation = _options.SslCertificateLocation;
+        if (!String.IsNullOrEmpty(_options.SslCertificatePem)) clientConfig.SslCertificatePem = _options.SslCertificatePem;
+        if (!String.IsNullOrEmpty(_options.SslCaLocation)) clientConfig.SslCaLocation = _options.SslCaLocation;
+        if (!String.IsNullOrEmpty(_options.SslCaPem)) clientConfig.SslCaPem = _options.SslCaPem;
+        if (!String.IsNullOrEmpty(_options.SslCaCertificateStores)) clientConfig.SslCaCertificateStores = _options.SslCaCertificateStores;
+        if (!String.IsNullOrEmpty(_options.SslCrlLocation)) clientConfig.SslCrlLocation = _options.SslCrlLocation;
+        if (!String.IsNullOrEmpty(_options.SslKeystoreLocation)) clientConfig.SslKeystoreLocation = _options.SslKeystoreLocation;
+        if (!String.IsNullOrEmpty(_options.SslKeystorePassword)) clientConfig.SslKeystorePassword = _options.SslKeystorePassword;
+        if (!String.IsNullOrEmpty(_options.SslEngineLocation)) clientConfig.SslEngineLocation = _options.SslEngineLocation;
+        if (!String.IsNullOrEmpty(_options.SslEngineId)) clientConfig.SslEngineId = _options.SslEngineId;
+        if (!String.IsNullOrEmpty(_options.BrokerVersionFallback)) clientConfig.BrokerVersionFallback = _options.BrokerVersionFallback;
+        if (!String.IsNullOrEmpty(_options.SaslKerberosServiceName)) clientConfig.SaslKerberosServiceName = _options.SaslKerberosServiceName;
+        if (!String.IsNullOrEmpty(_options.SaslKerberosPrincipal)) clientConfig.SaslKerberosPrincipal = _options.SaslKerberosPrincipal;
+        if (!String.IsNullOrEmpty(_options.SaslKerberosKinitCmd)) clientConfig.SaslKerberosKinitCmd = _options.SaslKerberosKinitCmd;
+        if (!String.IsNullOrEmpty(_options.SaslKerberosKeytab)) clientConfig.SaslKerberosKeytab = _options.SaslKerberosKeytab;
+        if (!String.IsNullOrEmpty(_options.SaslUsername)) clientConfig.SaslUsername = _options.SaslUsername;
+        if (!String.IsNullOrEmpty(_options.SaslPassword)) clientConfig.SaslPassword = _options.SaslPassword;
+        if (!String.IsNullOrEmpty(_options.SaslOauthbearerConfig)) clientConfig.SaslOauthbearerConfig = _options.SaslOauthbearerConfig;
+        if (!String.IsNullOrEmpty(_options.PluginLibraryPaths)) clientConfig.PluginLibraryPaths = _options.PluginLibraryPaths;
+        if (!String.IsNullOrEmpty(_options.ClientRack)) clientConfig.ClientRack = _options.ClientRack;
         if (_options.SaslMechanism.HasValue) clientConfig.SaslMechanism = _options.SaslMechanism;
         if (_options.Acks.HasValue) clientConfig.Acks = _options.Acks;
         if (_options.MessageMaxBytes.HasValue) clientConfig.MessageMaxBytes = _options.MessageMaxBytes;
@@ -326,7 +326,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
 
         return clientConfig;
     }
-    
+
     private AdminClientConfig CreateAdminConfig() {
         var clientConfig = CreateClientConfig();
         return new AdminClientConfig(clientConfig);
@@ -337,7 +337,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
         var _clientConfig = CreateClientConfig();
         var producerConfig = new ProducerConfig(_clientConfig);
 
-        if (!string.IsNullOrEmpty(_options.TransactionalId)) producerConfig.TransactionalId = _options.TransactionalId;
+        if (!String.IsNullOrEmpty(_options.TransactionalId)) producerConfig.TransactionalId = _options.TransactionalId;
         if (_options.EnableBackgroundPoll.HasValue) producerConfig.EnableBackgroundPoll = _options.EnableBackgroundPoll;
         if (_options.EnableDeliveryReports.HasValue) producerConfig.EnableDeliveryReports = _options.EnableDeliveryReports;
         if (_options.RequestTimeoutMs.HasValue) producerConfig.RequestTimeoutMs = _options.RequestTimeoutMs;
@@ -364,11 +364,11 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions> {
     private ConsumerConfig CreateConsumerConfig() {
         var _clientConfig = CreateClientConfig();
         var consumerConfig = new ConsumerConfig(_clientConfig);
-     
-        if (!string.IsNullOrEmpty(_options.GroupId)) consumerConfig.GroupId = _options.GroupId;
-        if (!string.IsNullOrEmpty(_options.GroupInstanceId)) consumerConfig.GroupInstanceId = _options.GroupInstanceId;
-        if (!string.IsNullOrEmpty(_options.ConsumeResultFields)) consumerConfig.ConsumeResultFields = _options.ConsumeResultFields;
-        if (!string.IsNullOrEmpty(_options.GroupProtocolType)) consumerConfig.GroupProtocolType = _options.GroupProtocolType;
+
+        if (!String.IsNullOrEmpty(_options.GroupId)) consumerConfig.GroupId = _options.GroupId;
+        if (!String.IsNullOrEmpty(_options.GroupInstanceId)) consumerConfig.GroupInstanceId = _options.GroupInstanceId;
+        if (!String.IsNullOrEmpty(_options.ConsumeResultFields)) consumerConfig.ConsumeResultFields = _options.ConsumeResultFields;
+        if (!String.IsNullOrEmpty(_options.GroupProtocolType)) consumerConfig.GroupProtocolType = _options.GroupProtocolType;
         if (_options.AutoOffsetReset.HasValue) consumerConfig.AutoOffsetReset = _options.AutoOffsetReset;
         if (_options.PartitionAssignmentStrategy.HasValue) consumerConfig.PartitionAssignmentStrategy = _options.PartitionAssignmentStrategy;
         if (_options.SessionTimeoutMs.HasValue) consumerConfig.SessionTimeoutMs = _options.SessionTimeoutMs;
