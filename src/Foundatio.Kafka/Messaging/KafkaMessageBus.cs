@@ -266,6 +266,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
                         topicSpecification.ReplicationFactor = _options.TopicReplicationFactor.Value;
 
                     await adminClient.CreateTopicsAsync(new[] { topicSpecification }).AnyContext();
+                    await Task.Delay(TimeSpan.FromSeconds(2));
                     _topicCreated = true;
 
                     if (_logger.IsEnabled(LogLevel.Trace))

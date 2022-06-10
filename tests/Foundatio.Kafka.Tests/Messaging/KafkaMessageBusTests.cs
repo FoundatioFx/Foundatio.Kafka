@@ -19,7 +19,7 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase {
         return base.CanUseMessageOptionsAsync();
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task CanSendMessageAsync() {
         return base.CanSendMessageAsync();
     }
@@ -29,7 +29,7 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase {
         return base.CanHandleNullMessageAsync();
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task CanSendDerivedMessageAsync() {
         return base.CanSendDerivedMessageAsync();
     }
@@ -39,12 +39,12 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase {
         return base.CanSendDelayedMessageAsync();
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task WillReceiveDerivedMessageTypesAsync() {
         return base.WillReceiveDerivedMessageTypesAsync();
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task CanSubscribeToAllMessageTypesAsync() {
         return base.CanSubscribeToAllMessageTypesAsync();
     }
@@ -54,7 +54,7 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase {
         return base.CanSubscribeToRawMessagesAsync();
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task CanTolerateSubscriberFailureAsync() {
         return base.CanTolerateSubscriberFailureAsync();
     }
@@ -64,12 +64,12 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase {
         return base.CanSendMessageToMultipleSubscribersAsync();
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task CanSubscribeConcurrentlyAsync() {
         return base.CanSubscribeConcurrentlyAsync();
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task WillOnlyReceiveSubscribedMessageTypeAsync() {
         return base.WillOnlyReceiveSubscribedMessageTypeAsync();
     }
