@@ -101,7 +101,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
             // What to do if message type is null?
             var message = ConvertToMessage(messageType, consumeResult.Message);
-
             await SendMessageToSubscribersAsync(message).AnyContext();
 
             if (!_subscribers.IsEmpty)
@@ -266,7 +265,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
                         topicSpecification.ReplicationFactor = _options.TopicReplicationFactor.Value;
 
                     await adminClient.CreateTopicsAsync(new[] { topicSpecification }).AnyContext();
-                    await Task.Delay(TimeSpan.FromSeconds(2));
                     _topicCreated = true;
 
                     if (_logger.IsEnabled(LogLevel.Trace))
