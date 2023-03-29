@@ -34,7 +34,7 @@ services:
     depends_on:
       - zookeeper
   ready:
-    image: dadarek/wait-for-dependencies
+    image: andrewlock/wait-for-dependencies
     command: zookeeper:2181 kafka:9092
     depends_on:
       - zookeeper
