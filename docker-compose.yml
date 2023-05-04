@@ -2,14 +2,6 @@
 version: "2"
 
 services:
-  zookeeper:
-    hostname: zookeeper
-    container_name: zookeeper
-    image: docker.io/bitnami/zookeeper:3.8.1
-    ports:
-      - "2181:2181"
-    environment:
-      - ALLOW_ANONYMOUS_LOGIN=yes
   kafka:
     hostname: kafka
     container_name: kafka
@@ -20,9 +12,11 @@ services:
     environment:
       - ALLOW_PLAINTEXT_LISTENER=yes
       - KAFKA_CFG_BROKER_ID=1
-      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:29092,PLAINTEXT_HOST://:9092
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@127.0.0.1:9094
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CONTROLLER://:9094,PLAINTEXT://:29092,PLAINTEXT_HOST://:9092
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
       - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
@@ -31,11 +25,13 @@ services:
       - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
       - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
       - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
-    depends_on:
-      - zookeeper
+    volumes:
+      - "kafkadata:/bitnami"
   ready:
     image: andrewlock/wait-for-dependencies
-    command: zookeeper:2181 kafka:9092
+    command: kafka:9092
     depends_on:
-      - zookeeper
       - kafka
+volumes:
+  kafkadata:
+    driver: local
