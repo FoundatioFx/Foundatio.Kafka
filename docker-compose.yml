@@ -30,7 +30,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536m
+          memory: 2g
 
   ready:
     image: andrewlock/wait-for-dependencies
