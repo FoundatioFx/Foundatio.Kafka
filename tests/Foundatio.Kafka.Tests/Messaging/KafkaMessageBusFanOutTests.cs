@@ -26,13 +26,13 @@ public class KafkaMessageBusFanOutTests : KafkaMessageBusTestBase
         );
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task CanReceiveFromMultipleSubscribersAsync()
     {
         return base.CanReceiveFromMultipleSubscribersAsync();
     }
 
-    [Fact(Skip = "https://github.com/confluentinc/confluent-kafka-dotnet/issues/1832")]
+    [Fact]
     public override Task CanReceiveMessagesConcurrentlyAsync()
     {
         return base.CanReceiveMessagesConcurrentlyAsync();
