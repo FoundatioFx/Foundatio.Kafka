@@ -1,11 +1,10 @@
 # https://raw.githubusercontent.com/bitnami/bitnami-docker-kafka/master/docker-compose.yml
-version: "2"
 
 services:
   kafka:
     hostname: kafka
     container_name: kafka
-    image: docker.io/bitnami/kafka:3.6.1
+    image: docker.io/bitnami/kafka:3.8.0
     ports:
       - "9092:9092"
       - "29092:29092"
@@ -28,11 +27,13 @@ services:
       - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
     volumes:
       - "kafkadata:/bitnami"
+
   ready:
     image: andrewlock/wait-for-dependencies
     command: kafka:9092
     depends_on:
       - kafka
+
 volumes:
   kafkadata:
     driver: local
