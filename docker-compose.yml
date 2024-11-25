@@ -27,10 +27,6 @@ services:
       - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
     volumes:
       - "kafkadata:/bitnami"
-    deploy:
-      resources:
-        limits:
-          memory: 1536m
 
   ready:
     image: andrewlock/wait-for-dependencies
