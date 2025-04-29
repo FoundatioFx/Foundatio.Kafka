@@ -48,12 +48,11 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
     protected override Task PublishImplAsync(string messageType, object message, MessageOptions options, CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("PublishImplAsync([{MessageType}])", messageType);
+        _logger.LogTrace("PublishImplAsync([{MessageType}])", messageType);
 
         if (options.DeliveryDelay.HasValue && options.DeliveryDelay.Value > TimeSpan.Zero)
         {
-            if (_logger.IsEnabled(LogLevel.Trace)) _logger.LogTrace("Schedule delayed message: {MessageType} ({Delay}ms)", messageType, options.DeliveryDelay.Value.TotalMilliseconds);
+            _logger.LogTrace("Schedule delayed message: {MessageType} ({Delay}ms)", messageType, options.DeliveryDelay.Value.TotalMilliseconds);
             return AddDelayedMessageAsync(GetMappedMessageType(messageType), message, options.DeliveryDelay.Value);
         }
 
@@ -80,12 +79,9 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
         _producer.Produce(_options.Topic, publishMessage, deliveryReport =>
         {
-            if (!_logger.IsEnabled(LogLevel.Trace))
-                return;
-
             if (deliveryReport.Error.Code != ErrorCode.NoError)
                 _logger.LogWarning("Publish failure: {Reason}", deliveryReport.Error.Reason);
-            else if (_logger.IsEnabled(LogLevel.Trace))
+            else
                 _logger.LogTrace("Published message to: {TopicPartitionOffset}", deliveryReport.TopicPartitionOffset);
         });
 
@@ -97,8 +93,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         if (_subscribers.IsEmpty)
             return;
 
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("OnMessage(TopicPartitionOffset={TopicPartitionOffset} GroupId={GroupId})", consumeResult.TopicPartitionOffset, _consumerConfig.GroupId);
+        _logger.LogTrace("OnMessage(TopicPartitionOffset={TopicPartitionOffset} GroupId={GroupId})", consumeResult.TopicPartitionOffset, _consumerConfig.GroupId);
 
         try
         {
@@ -156,8 +151,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
     protected override async Task EnsureTopicSubscriptionAsync(CancellationToken cancellationToken)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("EnsureTopicSubscriptionAsync Topic={Topic}", _options.Topic);
+        _logger.LogTrace("EnsureTopicSubscriptionAsync Topic={Topic}", _options.Topic);
 
         await EnsureTopicCreatedAsync().AnyContext();
         EnsureListening();
@@ -200,13 +194,11 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
         if (_listeningTask is { Status: TaskStatus.Running })
         {
-            if (_logger.IsEnabled(LogLevel.Trace))
-                _logger.LogTrace("Already Listening: {Topic}", _options.Topic);
+            _logger.LogTrace("Already Listening: {Topic}", _options.Topic);
             return;
         }
 
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("Start Listening: {Topic}", _options.Topic);
+        _logger.LogTrace("Start Listening: {Topic}", _options.Topic);
 
         _listeningTask = Task.Run(async () =>
         {
@@ -221,12 +213,11 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
                 .SetOAuthBearerTokenRefreshHandler(LogOAuthBearerTokenRefreshHandler)
                 .Build();
 
-            consumer.Subscribe(_options.Topic);
-            if (_logger.IsEnabled(LogLevel.Trace))
-                _logger.LogTrace("Consumer {ConsumerName} subscribed to {Topic} GroupId={GroupId}", consumer.Name, _options.Topic, _consumerConfig.GroupId);
-
             try
             {
+                consumer.Subscribe(_options.Topic);
+                _logger.LogTrace("Consumer {ConsumerName} subscribed to {Topic} GroupId={GroupId}", consumer.Name, _options.Topic, _consumerConfig.GroupId);
+
                 while (!_messageBusDisposedCancellationTokenSource.IsCancellationRequested)
                 {
                     var consumeResult = consumer.Consume(_messageBusDisposedCancellationTokenSource.Token);
@@ -246,8 +237,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
                 consumer.Unsubscribe();
                 consumer.Close();
 
-                if (_logger.IsEnabled(LogLevel.Trace))
-                    _logger.LogTrace("Consumer {ConsumerName} unsubscribed from {Topic} GroupId={GroupId}", consumer.Name, _options.Topic, _consumerConfig.GroupId);
+                _logger.LogTrace("Consumer {ConsumerName} unsubscribed from {Topic} GroupId={GroupId}", consumer.Name, _options.Topic, _consumerConfig.GroupId);
             }
         }, _messageBusDisposedCancellationTokenSource.Token);
     }
@@ -312,22 +302,24 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
                     await adminClient.CreateTopicsAsync(new[] { topicSpecification }).AnyContext();
                     _topicCreated = true;
 
-                    if (_logger.IsEnabled(LogLevel.Trace))
-                        _logger.LogTrace("Created topic {Topic}", _options.Topic);
+                    _logger.LogTrace("Created topic {Topic}", _options.Topic);
                 }
                 else
                 {
-                    throw new CreateTopicsException(new List<CreateTopicReport> {
-                        new() { Error = new Error(ErrorCode.TopicException, "Topic doesn't exist"), Topic = _options.Topic }
-                    });
+                    throw new CreateTopicsException([
+                        new()
+                        {
+                            Error = new Error(ErrorCode.TopicException, "Topic doesn't exist"),
+                            Topic = _options.Topic
+                        }
+                    ]);
                 }
             }
         }
         catch (CreateTopicsException ex) when (ex.Results[0].Error.Code is ErrorCode.TopicAlreadyExists)
         {
             _topicCreated = true;
-            if (_logger.IsEnabled(LogLevel.Debug))
-                _logger.LogDebug(ex, "Topic {Topic} already exists", _options.Topic);
+            _logger.LogDebug(ex, "Topic {Topic} already exists", _options.Topic);
         }
         catch (CreateTopicsException ex)
         {
@@ -358,16 +350,14 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
             if (isTopicExist)
             {
                 await adminClient.DeleteTopicsAsync(new[] { _options.Topic });
-                if (_logger.IsEnabled(LogLevel.Trace))
-                    _logger.LogTrace("Deleted topic {Topic}", _options.Topic);
+                _logger.LogTrace("Deleted topic {Topic}", _options.Topic);
             }
 
             _topicCreated = false;
         }
         catch (DeleteTopicsException ex) when (ex.Results[0].Error.Code is ErrorCode.TopicDeletionDisabled)
         {
-            if (_logger.IsEnabled(LogLevel.Debug))
-                _logger.LogDebug(ex, "Topic {Topic} deletion disabled", _options.Topic);
+            _logger.LogDebug(ex, "Topic {Topic} deletion disabled", _options.Topic);
         }
         catch (DeleteTopicsException ex)
         {
@@ -383,50 +373,42 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
     private void LogHandler(IClient client, LogMessage message)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("[{LogLevel}] Client log: {Message}", message.Level, message.Message);
+        _logger.LogTrace("[{LogLevel}] Client log: {Message}", message.Level, message.Message);
     }
 
     private void LogStatisticsHandler(IClient client, string statistics)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("Client Statistics: {Statistics}", statistics);
+        _logger.LogTrace("Client Statistics: {Statistics}", statistics);
     }
 
     private void LogPartitionAssignmentHandler(IConsumer<string, byte[]> consumer, List<TopicPartition> list)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("Consumer partitions assigned: {@Partitions}", list);
+        _logger.LogTrace("Consumer partitions assigned: {@Partitions}", list);
     }
 
     private void LogPartitionsLostHandler(IConsumer<string, byte[]> consumer, List<TopicPartitionOffset> list)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("Consumer partitions list: {@Partitions}", list);
+        _logger.LogTrace("Consumer partitions list: {@Partitions}", list);
     }
 
     private void LogPartitionsRevokedHandler(IConsumer<string, byte[]> consumer, List<TopicPartitionOffset> list)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("Consumer partitions revoked: {@Partitions}", list);
+        _logger.LogTrace("Consumer partitions revoked: {@Partitions}", list);
     }
 
     private void LogOffsetsCommittedHandler(IConsumer<string, byte[]> consumer, CommittedOffsets offsets)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("Consumer Committed Offsets: {@Offsets}", offsets.Offsets);
+        _logger.LogTrace("Consumer Committed Offsets: {@Offsets}", offsets.Offsets);
     }
 
     private void LogOAuthBearerTokenRefreshHandler(IClient client, string token)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("Client refresh OAuth Bearer Token: {BearerToken}", token);
+        _logger.LogTrace("Client refresh OAuth Bearer Token: {BearerToken}", token);
     }
 
     private void LogErrorHandler(IClient client, Error error)
     {
-        if (_logger.IsEnabled(LogLevel.Trace))
-            _logger.LogTrace("Client Error: [{ErrorCode}] {Message}", error.Code, error.Reason);
+        _logger.LogTrace("Client Error: [{ErrorCode}] {Message}", error.Code, error.Reason);
     }
 
     private ClientConfig CreateClientConfig()

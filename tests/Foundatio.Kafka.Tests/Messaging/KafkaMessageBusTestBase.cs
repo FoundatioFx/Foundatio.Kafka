@@ -8,12 +8,11 @@ namespace Foundatio.Kafka.Tests.Messaging;
 
 public class KafkaMessageBusTestBase : MessageBusTestBase
 {
-    protected readonly string Topic = $"test_{Guid.NewGuid():N}";
-    protected readonly string GroupId = $"group_{Guid.NewGuid():N}";
+    protected readonly string Topic = $"test_{Guid.NewGuid().ToString("N")[..10]}";
+    protected readonly string GroupId = $"group_{Guid.NewGuid().ToString("N")[..10]}";
 
     public KafkaMessageBusTestBase(ITestOutputHelper output) : base(output)
     {
-        //Log.DefaultMinimumLevel = LogLevel.Trace;
         EnableTopicDeletion = true;
     }
 
@@ -25,8 +24,6 @@ public class KafkaMessageBusTestBase : MessageBusTestBase
             .TopicReplicationFactor(1)
             .TopicNumberOfPartitions(1)
             .GroupId(GroupId)
-            .EnableAutoCommit(false)
-            .EnableAutoOffsetStore(false)
             .AllowAutoCreateTopics(true)
             //.Debug("consumer,cgrp,topic,fetch")
             .LoggerFactory(Log)
