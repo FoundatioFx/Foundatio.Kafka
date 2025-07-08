@@ -11,7 +11,7 @@
       },
       "args": [
         "build",
-        "${workspaceFolder}/Foundatio.Kafka.sln",
+        "${workspaceFolder}/Foundatio.Kafka.slnx",
         "/p:GenerateFullPaths=true"
       ],
       "problemMatcher": "$msCompile"
