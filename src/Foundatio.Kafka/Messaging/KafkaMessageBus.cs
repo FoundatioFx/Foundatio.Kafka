@@ -24,6 +24,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
     private readonly ConsumerConfig _consumerConfig;
     private readonly IProducer<string, byte[]> _producer;
     private readonly AsyncLock _lock = new();
+    private readonly AsyncManualResetEvent _consumerReady = new();
     private bool _topicCreated;
     private bool _isDisposed;
 
@@ -170,6 +171,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
         await EnsureTopicCreatedAsync().AnyContext();
         EnsureListening();
+        await _consumerReady.WaitAsync(cancellationToken).AnyContext();
     }
 
     protected virtual IMessage ConvertToMessage(string messageType, Message<string, byte[]> message)
@@ -423,6 +425,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
     private void LogPartitionAssignmentHandler(IConsumer<string, byte[]> consumer, List<TopicPartition> list)
     {
         _logger.LogTrace("Consumer partitions assigned: {@Partitions}", list);
+        _consumerReady.Set();
     }
 
     private void LogPartitionsLostHandler(IConsumer<string, byte[]> consumer, List<TopicPartitionOffset> list)
@@ -433,6 +436,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
     private void LogPartitionsRevokedHandler(IConsumer<string, byte[]> consumer, List<TopicPartitionOffset> list)
     {
         _logger.LogTrace("Consumer partitions revoked: {@Partitions}", list);
+        _consumerReady.Reset();
     }
 
     private void LogOffsetsCommittedHandler(IConsumer<string, byte[]> consumer, CommittedOffsets offsets)
