@@ -110,9 +110,15 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
             string? messageType = _options.ResolveMessageType?.Invoke(consumeResult);
             if (String.IsNullOrEmpty(messageType) && consumeResult.Message.Headers is not null)
             {
-                var messageTypeHeader = consumeResult.Message.Headers.SingleOrDefault(x => x.Key.Equals(KafkaHeaders.MessageType));
+                var messageTypeHeader = consumeResult.Message.Headers.FirstOrDefault(x => x.Key.Equals(KafkaHeaders.MessageType));
                 if (messageTypeHeader is not null)
                     messageType = Encoding.UTF8.GetString(messageTypeHeader.GetValueBytes());
+            }
+
+            if (String.IsNullOrEmpty(messageType))
+            {
+                _logger.LogWarning("Unable to resolve message type for message at {TopicPartitionOffset}; skipping", consumeResult.TopicPartitionOffset);
+                return;
             }
 
             var message = ConvertToMessage(messageType, consumeResult.Message);
