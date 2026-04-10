@@ -27,7 +27,7 @@ public class Program
         do
         {
             message = Console.ReadLine();
-            await messageBus.PublishAsync(new MyMessage { Hey = message });
+            await messageBus.PublishAsync(new MyMessage { Hey = message ?? String.Empty });
 
             logger.LogInformation("Message sent. Enter new message or press enter to exit:");
         } while (!String.IsNullOrEmpty(message));

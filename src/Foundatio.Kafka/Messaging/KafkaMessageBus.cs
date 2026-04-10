@@ -108,10 +108,10 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         try
         {
             string? messageType = _options.ResolveMessageType?.Invoke(consumeResult);
-            if (String.IsNullOrEmpty(messageType))
+            if (String.IsNullOrEmpty(messageType) && consumeResult.Message.Headers is not null)
             {
                 var messageTypeHeader = consumeResult.Message.Headers.SingleOrDefault(x => x.Key.Equals(KafkaHeaders.MessageType));
-                if (messageTypeHeader != null)
+                if (messageTypeHeader is not null)
                     messageType = Encoding.UTF8.GetString(messageTypeHeader.GetValueBytes());
             }
 
@@ -182,26 +182,29 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
     {
         var result = new Message(message.Value, DeserializeMessageBody)
         {
-            Type = messageType ?? string.Empty,
+            Type = messageType ?? String.Empty,
             ClrType = messageType is not null ? GetMappedMessageType(messageType) : null
         };
 
-        foreach (var header in message.Headers)
+        if (message.Headers is not null)
         {
-            switch (header.Key)
+            foreach (var header in message.Headers)
             {
-                case KafkaHeaders.MessageType:
-                case KafkaHeaders.ContentType:
-                    break;
-                case KafkaHeaders.CorrelationId:
-                    result.CorrelationId = Encoding.UTF8.GetString(header.GetValueBytes());
-                    break;
-                case KafkaHeaders.UniqueId:
-                    result.UniqueId = Encoding.UTF8.GetString(header.GetValueBytes());
-                    break;
-                default:
-                    result.Properties[header.Key] = Encoding.UTF8.GetString(header.GetValueBytes());
-                    break;
+                switch (header.Key)
+                {
+                    case KafkaHeaders.MessageType:
+                    case KafkaHeaders.ContentType:
+                        break;
+                    case KafkaHeaders.CorrelationId:
+                        result.CorrelationId = Encoding.UTF8.GetString(header.GetValueBytes());
+                        break;
+                    case KafkaHeaders.UniqueId:
+                        result.UniqueId = Encoding.UTF8.GetString(header.GetValueBytes());
+                        break;
+                    default:
+                        result.Properties[header.Key] = Encoding.UTF8.GetString(header.GetValueBytes());
+                        break;
+                }
             }
         }
 
