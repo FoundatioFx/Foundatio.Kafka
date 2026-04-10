@@ -116,7 +116,10 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
             }
 
             if (String.IsNullOrEmpty(messageType))
-                throw new MessageBusException($"Unable to resolve message type for message at {consumeResult.TopicPartitionOffset}");
+            {
+                _logger.LogWarning("Unable to resolve message type for message at {TopicPartitionOffset}, skipping", consumeResult.TopicPartitionOffset);
+                return;
+            }
 
             var message = ConvertToMessage(messageType, consumeResult.Message);
             await SendMessageToSubscribersAsync(message).AnyContext();
