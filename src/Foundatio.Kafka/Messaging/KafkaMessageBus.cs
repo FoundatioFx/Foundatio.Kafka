@@ -108,18 +108,15 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         try
         {
             string? messageType = _options.ResolveMessageType?.Invoke(consumeResult);
-            if (String.IsNullOrEmpty(messageType) && consumeResult.Message.Headers is not null)
+            if (String.IsNullOrEmpty(messageType))
             {
-                var messageTypeHeader = consumeResult.Message.Headers.FirstOrDefault(x => x.Key.Equals(KafkaHeaders.MessageType));
+                var messageTypeHeader = consumeResult.Message.Headers.FirstOrDefault(x => String.Equals(x.Key, KafkaHeaders.MessageType));
                 if (messageTypeHeader is not null)
                     messageType = Encoding.UTF8.GetString(messageTypeHeader.GetValueBytes());
             }
 
             if (String.IsNullOrEmpty(messageType))
-            {
-                _logger.LogWarning("Unable to resolve message type for message at {TopicPartitionOffset}; skipping", consumeResult.TopicPartitionOffset);
-                return;
-            }
+                throw new MessageBusException($"Unable to resolve message type for message at {consumeResult.TopicPartitionOffset}");
 
             var message = ConvertToMessage(messageType, consumeResult.Message);
             await SendMessageToSubscribersAsync(message).AnyContext();
@@ -184,33 +181,30 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         await _consumerReady.WaitAsync(cancellationToken).AnyContext();
     }
 
-    protected virtual IMessage ConvertToMessage(string? messageType, Message<string, byte[]> message)
+    protected virtual IMessage ConvertToMessage(string messageType, Message<string, byte[]> message)
     {
         var result = new Message(message.Value, DeserializeMessageBody)
         {
-            Type = messageType ?? String.Empty,
-            ClrType = messageType is not null ? GetMappedMessageType(messageType) : null
+            Type = messageType,
+            ClrType = GetMappedMessageType(messageType)
         };
 
-        if (message.Headers is not null)
+        foreach (var header in message.Headers)
         {
-            foreach (var header in message.Headers)
+            switch (header.Key)
             {
-                switch (header.Key)
-                {
-                    case KafkaHeaders.MessageType:
-                    case KafkaHeaders.ContentType:
-                        break;
-                    case KafkaHeaders.CorrelationId:
-                        result.CorrelationId = Encoding.UTF8.GetString(header.GetValueBytes());
-                        break;
-                    case KafkaHeaders.UniqueId:
-                        result.UniqueId = Encoding.UTF8.GetString(header.GetValueBytes());
-                        break;
-                    default:
-                        result.Properties[header.Key] = Encoding.UTF8.GetString(header.GetValueBytes());
-                        break;
-                }
+                case KafkaHeaders.MessageType:
+                case KafkaHeaders.ContentType:
+                    break;
+                case KafkaHeaders.CorrelationId:
+                    result.CorrelationId = Encoding.UTF8.GetString(header.GetValueBytes());
+                    break;
+                case KafkaHeaders.UniqueId:
+                    result.UniqueId = Encoding.UTF8.GetString(header.GetValueBytes());
+                    break;
+                default:
+                    result.Properties[header.Key] = Encoding.UTF8.GetString(header.GetValueBytes());
+                    break;
             }
         }
 

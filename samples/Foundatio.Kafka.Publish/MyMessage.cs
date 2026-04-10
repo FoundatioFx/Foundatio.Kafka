@@ -1,8 +1,6 @@
-﻿using System;
+﻿namespace Foundatio.Kafka;
 
-namespace Foundatio.Kafka;
-
-public class MyMessage
+public record MyMessage
 {
-    public string Hey { get; set; } = String.Empty;
+    public required string Hey { get; init; }
 }
