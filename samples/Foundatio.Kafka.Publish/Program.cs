@@ -23,7 +23,7 @@ public class Program
             LoggerFactory = loggerFactory,
         });
 
-        string message;
+        string? message;
         do
         {
             message = Console.ReadLine();
