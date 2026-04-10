@@ -20,7 +20,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions
     /// <summary>
     /// Resolve a message type from a custom source.
     /// </summary>
-    public Func<ConsumeResult<string, byte[]>, string>? ResolveMessageType { get; set; }
+    public Func<ConsumeResult<string, byte[]>, string?>? ResolveMessageType { get; set; }
 
     public string ContentType { get; set; } = "application/json";
 
@@ -609,7 +609,7 @@ public class KafkaMessageBusOptionsBuilder : SharedMessageBusOptionsBuilder<Kafk
     /// <summary>
     /// <inheritdoc cref="KafkaMessageBusOptions.ResolveMessageType"/>
     /// </summary>
-    public KafkaMessageBusOptionsBuilder ResolveMessageType(Func<ConsumeResult<string, byte[]>, string> resolveMessageType)
+    public KafkaMessageBusOptionsBuilder ResolveMessageType(Func<ConsumeResult<string, byte[]>, string?> resolveMessageType)
     {
         Target.ResolveMessageType = resolveMessageType ?? throw new ArgumentNullException(nameof(resolveMessageType));
         return this;
