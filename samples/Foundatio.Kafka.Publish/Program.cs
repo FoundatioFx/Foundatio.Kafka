@@ -32,6 +32,10 @@ public class Program
                 await messageBus.PublishAsync(new MyMessage { Hey = message });
                 logger.LogInformation("Message sent. Enter new message or press enter to exit:");
             }
+            else
+            {
+                logger.LogError("Unable to send: message was empty or null.");
+            }
         } while (!String.IsNullOrEmpty(message));
     }
 }
