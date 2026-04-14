@@ -26,7 +26,6 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
     private readonly AsyncLock _lock = new();
     private readonly AsyncManualResetEvent _consumerReady = new();
     private bool _topicCreated;
-    private bool _isDisposed;
 
     public KafkaMessageBus(KafkaMessageBusOptions options) : base(options)
     {
@@ -124,21 +123,21 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
             var message = ConvertToMessage(messageType, consumeResult.Message);
             await SendMessageToSubscribersAsync(message).AnyContext();
         }
+        catch (OperationCanceledException)
+        {
+            // Bus is disposing — don't commit the offset so the message can be redelivered
+            return;
+        }
         catch (MessageBusException)
         {
-            // Subscriber handler failures are application-level errors. The base class
-            // already logged the error. We still commit the offset below to prevent
-            // infinite redelivery loops.
         }
         catch (Exception ex)
         {
-            // Deserialization or message type resolution failed. Log and commit the offset
-            // below to avoid a poison-pill message blocking the consumer indefinitely.
             _logger.LogError(ex, "Error processing message at {TopicPartitionOffset} GroupId={GroupId}, skipping: {Message}", consumeResult.TopicPartitionOffset, _consumerConfig.GroupId, ex.Message);
         }
         finally
         {
-            if (!_subscribers.IsEmpty)
+            if (!IsDisposed)
                 AcknowledgeMessage(consumer, consumeResult);
         }
     }
@@ -295,23 +294,26 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         }, DisposedCancellationToken);
     }
 
-    public override void Dispose()
+    protected override async Task CleanupAsync()
     {
-        if (_isDisposed)
+        if (_listeningTask is not null)
         {
-            _logger.LogTrace("MessageBus {MessageBusId} dispose was already called", MessageBusId);
-            return;
+            try
+            {
+                await _listeningTask.WaitAsync(TimeSpan.FromSeconds(15)).AnyContext();
+            }
+            catch (OperationCanceledException) { }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning("Listening task did not complete within timeout during dispose");
+            }
         }
-
-        _isDisposed = true;
-        _logger.LogTrace("MessageBus {MessageBusId} dispose", MessageBusId);
 
         int? queueSize = _producer?.Flush(TimeSpan.FromSeconds(15));
         if (queueSize > 0)
             _logger.LogTrace("Flushed producer {queueSize}", queueSize);
 
         _producer?.Dispose();
-        base.Dispose();
     }
 
     private async Task EnsureTopicCreatedAsync()
