@@ -45,21 +45,9 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase
     }
 
     [Fact]
-    public override Task PublishAsync_WithCancellation_ThrowsOperationCanceledExceptionAsync()
+    public override Task CanSendMappedMessageAsync()
     {
-        return base.PublishAsync_WithCancellation_ThrowsOperationCanceledExceptionAsync();
-    }
-
-    [Fact]
-    public override Task PublishAsync_WithDelayedMessageAndDisposeBeforeDelivery_DiscardsMessageAsync()
-    {
-        return base.PublishAsync_WithDelayedMessageAndDisposeBeforeDelivery_DiscardsMessageAsync();
-    }
-
-    [Fact]
-    public override Task SubscribeAsync_WithCancellation_ThrowsOperationCanceledExceptionAsync()
-    {
-        return base.SubscribeAsync_WithCancellation_ThrowsOperationCanceledExceptionAsync();
+        return base.CanSendMappedMessageAsync();
     }
 
     [Fact]
@@ -123,6 +111,12 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase
     }
 
     [Fact]
+    public override Task CanHandlePoisonedMessageAsync()
+    {
+        return base.CanHandlePoisonedMessageAsync();
+    }
+
+    [Fact]
     public override Task DisposeAsync_CalledMultipleTimes_IsIdempotentAsync()
     {
         return base.DisposeAsync_CalledMultipleTimes_IsIdempotentAsync();
@@ -147,6 +141,24 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase
     }
 
     [Fact]
+    public override Task PublishAsync_WithCancellation_ThrowsOperationCanceledExceptionAsync()
+    {
+        return base.PublishAsync_WithCancellation_ThrowsOperationCanceledExceptionAsync();
+    }
+
+    [Fact]
+    public override Task PublishAsync_WithDelayedMessageAndDisposeBeforeDelivery_DiscardsMessageAsync()
+    {
+        return base.PublishAsync_WithDelayedMessageAndDisposeBeforeDelivery_DiscardsMessageAsync();
+    }
+
+    [Fact]
+    public override Task PublishAsync_WithSerializationFailure_ThrowsSerializerExceptionAsync()
+    {
+        return base.PublishAsync_WithSerializationFailure_ThrowsSerializerExceptionAsync();
+    }
+
+    [Fact]
     public override Task SubscribeAsync_AfterDispose_ThrowsMessageBusExceptionAsync()
     {
         return base.SubscribeAsync_AfterDispose_ThrowsMessageBusExceptionAsync();
@@ -159,21 +171,9 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase
     }
 
     [Fact]
-    public override Task CanHandlePoisonedMessageAsync()
+    public override Task SubscribeAsync_WithCancellation_ThrowsOperationCanceledExceptionAsync()
     {
-        return base.CanHandlePoisonedMessageAsync();
-    }
-
-    [Fact]
-    public override Task SubscribeAsync_WithValidThenPoisonedMessage_DeliversOnlyValidMessageAsync()
-    {
-        return base.SubscribeAsync_WithValidThenPoisonedMessage_DeliversOnlyValidMessageAsync();
-    }
-
-    [Fact]
-    public override Task PublishAsync_WithSerializationFailure_ThrowsSerializerExceptionAsync()
-    {
-        return base.PublishAsync_WithSerializationFailure_ThrowsSerializerExceptionAsync();
+        return base.SubscribeAsync_WithCancellation_ThrowsOperationCanceledExceptionAsync();
     }
 
     [Fact]
@@ -183,9 +183,9 @@ public class KafkaMessageBusTests : KafkaMessageBusTestBase
     }
 
     [Fact]
-    public override Task CanSendMappedMessageAsync()
+    public override Task SubscribeAsync_WithValidThenPoisonedMessage_DeliversOnlyValidMessageAsync()
     {
-        return base.CanSendMappedMessageAsync();
+        return base.SubscribeAsync_WithValidThenPoisonedMessage_DeliversOnlyValidMessageAsync();
     }
 
     [Fact]
