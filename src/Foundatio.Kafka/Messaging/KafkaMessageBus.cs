@@ -14,7 +14,7 @@ namespace Foundatio.Messaging;
 
 public interface IKafkaMessageBus : IMessageBus
 {
-    Task DeleteTopicAsync();
+    Task DeleteTopicAsync(CancellationToken cancellationToken = default);
 }
 
 public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMessageBus
@@ -393,9 +393,13 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         }
     }
 
-    async Task IKafkaMessageBus.DeleteTopicAsync()
+    async Task IKafkaMessageBus.DeleteTopicAsync(CancellationToken cancellationToken)
     {
-        using var topicLock = await _lock.LockAsync(DisposedCancellationToken).AnyContext();
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
+
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken, DisposedCancellationToken);
+        using var topicLock = await _lock.LockAsync(linkedCts.Token).AnyContext();
         using var adminClient = new AdminClientBuilder(_adminClientConfig)
             .SetLogHandler(LogHandler)
             .SetStatisticsHandler(LogStatisticsHandler)
