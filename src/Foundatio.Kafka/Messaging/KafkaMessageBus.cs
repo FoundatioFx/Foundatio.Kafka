@@ -104,6 +104,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
         _logger.LogTrace("OnMessage(TopicPartitionOffset={TopicPartitionOffset} GroupId={GroupId})", consumeResult.TopicPartitionOffset, _consumerConfig.GroupId);
 
+        bool shouldAcknowledge = true;
         try
         {
             string? messageType = _options.ResolveMessageType?.Invoke(consumeResult);
@@ -123,10 +124,9 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
             var message = ConvertToMessage(messageType, consumeResult.Message);
             await SendMessageToSubscribersAsync(message).AnyContext();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (IsDisposed)
         {
-            // Bus is disposing — don't commit the offset so the message can be redelivered
-            return;
+            shouldAcknowledge = false;
         }
         catch (MessageBusException)
         {
@@ -137,7 +137,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         }
         finally
         {
-            if (!IsDisposed)
+            if (shouldAcknowledge && !IsDisposed)
                 AcknowledgeMessage(consumer, consumeResult);
         }
     }
@@ -302,10 +302,17 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
             {
                 await _listeningTask.WaitAsync(TimeSpan.FromSeconds(15)).AnyContext();
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogTrace(ex, "Listening task cancelled during cleanup");
+            }
             catch (TimeoutException)
             {
                 _logger.LogWarning("Listening task did not complete within timeout during dispose");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error waiting for listening task to complete during cleanup");
             }
         }
 
