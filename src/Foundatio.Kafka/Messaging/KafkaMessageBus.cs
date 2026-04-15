@@ -95,6 +95,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
     private async Task OnMessageAsync(IConsumer<string, byte[]> consumer, ConsumeResult<string, byte[]> consumeResult)
     {
+        // No subscribers registered — acknowledge to commit the offset and prevent
+        // the message from being redelivered in an infinite loop.
         if (_subscribers.IsEmpty)
         {
             AcknowledgeMessage(consumer, consumeResult);
@@ -146,6 +148,8 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         }
         finally
         {
+            // Commit the offset unless the bus is disposing, in which case we skip so
+            // the message is redelivered to other consumers in the group.
             if (shouldAcknowledge && !IsDisposed)
                 AcknowledgeMessage(consumer, consumeResult);
         }
