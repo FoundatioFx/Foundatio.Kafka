@@ -43,7 +43,9 @@ public class KafkaMessageBusTestBase : MessageBusTestBase
             {
                 await kafkaMessageBus.DeleteTopicAsync();
             }
-            catch (ObjectDisposedException) { }
+            catch (ObjectDisposedException)
+            {
+            }
         }
 
         await base.CleanupMessageBusAsync(messageBus);

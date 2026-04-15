@@ -130,9 +130,14 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         }
         catch (MessageBusException)
         {
+            // Subscriber handler failures are application-level errors. The base class
+            // already logged the error. We still commit the offset below to prevent
+            // infinite redelivery loops.
         }
         catch (Exception ex)
         {
+            // Deserialization or message type resolution failed. Log and commit the offset
+            // below to avoid a poison-pill message blocking the consumer indefinitely.
             _logger.LogError(ex, "Error processing message at {TopicPartitionOffset} GroupId={GroupId}, skipping: {Message}", consumeResult.TopicPartitionOffset, _consumerConfig.GroupId, ex.Message);
         }
         finally
