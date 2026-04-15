@@ -95,13 +95,11 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
 
     private async Task OnMessageAsync(IConsumer<string, byte[]> consumer, ConsumeResult<string, byte[]> consumeResult)
     {
-        // No subscribers registered — acknowledge to commit the offset and prevent
-        // the message from being redelivered in an infinite loop.
+        // No subscribers registered — skip processing but do NOT commit the offset.
+        // Kafka retains uncommitted messages so they are redelivered once a subscriber
+        // reconnects, which is the expected persistence-guarantee behavior.
         if (_subscribers.IsEmpty)
-        {
-            AcknowledgeMessage(consumer, consumeResult);
             return;
-        }
 
         using var _ = _logger.BeginScope(s => s
             .Property("TopicPartitionOffset", consumeResult.TopicPartitionOffset)
