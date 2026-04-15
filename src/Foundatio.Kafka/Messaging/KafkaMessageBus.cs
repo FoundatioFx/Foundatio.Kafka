@@ -96,7 +96,10 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
     private async Task OnMessageAsync(IConsumer<string, byte[]> consumer, ConsumeResult<string, byte[]> consumeResult)
     {
         if (_subscribers.IsEmpty)
+        {
+            AcknowledgeMessage(consumer, consumeResult);
             return;
+        }
 
         using var _ = _logger.BeginScope(s => s
             .Property("TopicPartitionOffset", consumeResult.TopicPartitionOffset)
@@ -126,6 +129,7 @@ public class KafkaMessageBus : MessageBusBase<KafkaMessageBusOptions>, IKafkaMes
         }
         catch (OperationCanceledException) when (IsDisposed)
         {
+            // Bus is disposing — skip offset commit so the message is redelivered to other consumers
             shouldAcknowledge = false;
         }
         catch (MessageBusException)
