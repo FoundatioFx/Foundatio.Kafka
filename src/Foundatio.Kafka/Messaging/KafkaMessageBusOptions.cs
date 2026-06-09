@@ -645,7 +645,7 @@ public class KafkaMessageBusOptions : SharedMessageBusOptions
     public AutoOffsetReset? AutoOffsetReset { get; set; } = Confluent.Kafka.AutoOffsetReset.Earliest;
 
     /// <summary>
-    /// <inheritdoc cref="ConsumerConfig.EnablePartitionEof"/>
+    /// <inheritdoc cref="ConsumerConfig.CheckCrcs"/>
     /// </summary>
     public bool? CheckCrcs { get; set; }
 
